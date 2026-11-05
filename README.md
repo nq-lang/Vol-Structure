@@ -35,6 +35,7 @@ All numbers in the UI come from the C++ models; the UI draws and never recompute
 
 ## Build and test
     cmake -S . -B build && cmake --build build -j && ctest --test-dir build      # C++ suites, no external dependencies
+    tools/check_js.sh                                                            # JS/Python syntax + stream unit tests (fast)
     tools/run_all.sh                                                             # C++ + all UI suites (needs Python Playwright + Chromium)
 
 Single-file build flags used in development: `g++ -std=c++23 -UNDEBUG -I include -I . -Wall -Wextra -Werror`.
@@ -48,6 +49,8 @@ Single-file build flags used in development: `g++ -std=c++23 -UNDEBUG -I include
 - One heatmap for all three models; metric selector: Structural (default), Net GEX, Vanna, Charm, Vomma, Vega, Delta hedge, Touch prob, Open int., Hedge $/1%.
 - One non-linear ramp by exposure magnitude: midnight navy -> royal blue -> dark gold -> light yellow -> bright yellow -> red (OKLab LUT; red only for the top exposures). One fixed colour scale per metric, so the same value is always the same colour; only the past is dimmed, the projection right of "now" keeps full intensity.
 - Chips state the expected outcome of an approach (MAGNET / PINNING / REJECTION / AMPLIFIER); right-hand pills name the asset and strike, e.g. `QQQ $516 - NQ $21,678`.
+- Renderers: WebGL2 (`web/js/chartfactors/cf_gl.js`; raw values in an R32F texture, colour ramp as a 1D LUT, scale/gamma/bands as uniforms, so re-scaling never re-uploads data) with an identical canvas2D path. `renderer` setting: auto (GL on real GPUs, CPU on software rasterisers), webgl, canvas2d; context loss falls back automatically.
+- Live depth layer ("Live depth (example)" + Depth button): Bookmap-style resting-liquidity matrix at prices (`cf_stream.js`: typed-array ring, per-column max aggregation, carry-forward, gap timeout, late-update merge, adaptive p99.5 scale, dirty-slot GPU uploads). Runs on a mock feed (5k-500k updates/s) until the order-flow API is attached; real feed calls `Ring.ingest(ts, px, sz, n)`. Can be shown alone, or blended with the dealer-flow heatmap.
 - Replay GIF: `docs/media/heatmap_replay.gif` (regenerate with `python3 tests/ui/make_heatmap_gif.py`).
 - Details and gaps: `docs/heatmap-spec-audit.md`, `docs/chart-factors-*.md`.
 
@@ -63,4 +66,4 @@ All data the UI shows today is synthetic and labelled as such; fixtures are gene
 Run `vt_probe` against the live source, then `vt_validate days.csv bars.csv`. The CSV formats are in `src/validation/validate_main.cpp`. All five gates must pass on real data.
 
 ## Status and known gaps
-See `PROGRESS.md`. Open: live order-flow feed, VIX/VXN history data, real LLM client / adapters / webview wiring, WebGL2 renderer, binary snapshot protocol.
+See `PROGRESS.md`. Open: live order-flow feed, VIX/VXN history data, real LLM client / adapters / webview wiring, real depth feed into `Ring.ingest`, binary snapshot protocol.

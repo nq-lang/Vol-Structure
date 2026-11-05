@@ -13,3 +13,6 @@
 - **View:** the vertical window eases toward its target (180 ms time constant); heat, price line, markers and flags share one transform.
 - **Verification:** `tests/ui/verify_chart.py` (geometry, colour ramp, epoch gating, parity, dynamics, golden replay checksums in `tests/golden/cf_nq_heat.json`, six-ticker render, redraw benchmark), `tests/ui/make_heatmap_gif.py` (replay GIF).
 - **Still open:** live order-flow feed (per-second columns, real bid/ask), WebGL2 renderer, binary snapshot protocol, rank-blend and rolling/session scale windows.
+
+## Rendering and streaming (as built)
+Model states -> `buildRaw` (Float32 cols x rows, never colours) -> GL texture or CPU `buildTex`; shader/CPU apply the same t, gamma, bands, alpha, LUT. Depth: feed -> `Ring.ingest(ts, px, sz, n)` (no per-update allocation) -> dirty slot runs -> `texSubImage2D` into an R32F ring texture (one texel-row per time column, absolute column modulo ring) -> fragment shader places cells by uniforms (origin, cell size), so scrolling and rescaling never re-upload. CPU twin (`liqCpu`) renders visible rows x columns with max aggregation. Replacing the mock feed with the real API only means calling `Ring.ingest`.

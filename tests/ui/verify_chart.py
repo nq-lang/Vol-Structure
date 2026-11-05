@@ -118,7 +118,7 @@ with sync_playwright() as p:
         pg.evaluate("(j)=>window.onChartFactors(j)", json.dumps(LP["NQ_family"]["chart"])); pg.wait_for_timeout(200)
         dy = pg.evaluate("""()=>{const S=VT_CF.state;const H=S.hist;const eps=new Set(H.map(h=>h.c.epoch));const spots=H.map(h=>h.c.axis.spot);
             S.view={t0:H[0].t-2,t1:H[H.length-1].t+8,p0:spots[0]-500,p1:spots[0]+500};S.pos=null;S.set.blend='smooth';S.texKey='';VT_CF.draw();const g=VT_CF.grid(),id=S.metric;
-            const colour=(blend)=>{S.set.blend=blend;S.texKey='';VT_CF.draw();const cv=S.tex,x=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data;const R=cv.height;let mx=0;
+            const colour=(blend)=>{S.set.blend=blend;S.texKey='';VT_CF.draw();const cv=VT_CF.cpuTex(),x=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data;const R=cv.height;let mx=0;
               for(let r=0;r<R;r++)for(let c=1;c<cv.width;c++){const a=(r*cv.width+c)*4,b=a-4;mx=Math.max(mx,Math.abs(x[a]-x[b])+Math.abs(x[a+1]-x[b+1])+Math.abs(x[a+2]-x[b+2]));}return mx};
             const jumpSmooth=colour('smooth'),jumpHold=colour('hold');S.set.blend='smooth';S.texKey='';
             // live easing: just after a state arrives (replay) values sit between previous and new state
@@ -129,7 +129,7 @@ with sync_playwright() as p:
             S.ve={c:S.ve?S.ve.c+200:0,h:300};const tgt=(()=>{const c=VT_CF.cur();return c.axis.spot})();const seq=[];for(let i=0;i<60;i++){VT_CF.stepView(0.05);seq.push(Math.abs(S.ve.c-tgt));}
             // gaps: a 30-minute hole yields empty columns
             const old=H.map(h=>h.t);const e=H.slice(0,3);S.hist=[{t:old[0],c:H[0].c},{t:old[0]+40,c:H[1].c},{t:old[0]+41,c:H[2].c}];S.set.gapMin=15;S.view={t0:old[0]-1,t1:old[0]+45,p0:spots[0]-500,p1:spots[0]+500};S.pos=null;S.texKey='';VT_CF.draw();
-            const cv=S.tex,xx=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data;let gapA=0;const col=Math.floor(old[0]+25)-Math.floor(S.view.t0);for(let r=0;r<cv.height;r++)gapA+=xx[(r*cv.width+col)*4+3];
+            const cv=VT_CF.cpuTex(),xx=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data;let gapA=0;const col=Math.floor(old[0]+25)-Math.floor(S.view.t0);for(let r=0;r<cv.height;r++)gapA+=xx[(r*cv.width+col)*4+3];
             S.hist=H;S.set.gapMin=15;S.view=null;S.ve=null;S.texKey='';
             return {n:H.length,eps:eps.size,spread:Math.max(...spots)-Math.min(...spots),jumpSmooth,jumpHold,k0,k1,changed:a!==b,mono:seq.every((v,i)=>i==0||v<=seq[i-1]+1e-9),conv:seq[seq.length-1]<seq[0]*0.05,gapA}}""")
         chk(dy["n"] >= 20 and dy["eps"] == dy["n"], f"history has distinct model states {dy['n']}/{dy['eps']}"); chk(dy["spread"] > 20, f"mock path moves {dy['spread']:.1f} pts")

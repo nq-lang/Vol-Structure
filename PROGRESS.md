@@ -370,3 +370,11 @@ T2-5 hedging, T2-6 vol/risk, T2-7 multibook_v1, T2-8 scoped LLM layer, cross-boo
 - Renderer: interpolation between model states, live easing, view recentre easing, gap handling, 720-state ring buffer, backfill setting; example candles bridged through each state's price.
 - Tests: dynamics + golden replay checksums (`tests/golden/`), six-ticker render, benchmark. `tests/ui/make_heatmap_gif.py` renders the replay GIF.
 - Waiting on you: VIX/VXN history data, order-flow API (real tape / L2 / bid-ask), LLM client + adapters + webview wiring.
+
+## WebGL2 renderer + streaming depth layer
+- `cf_gl.js`: WebGL2 heat renderer (R32F raw texture, LUT, shader; plain and ring-texture modes). `cf_chart.js` split into `buildRaw` (raw matrix) and `buildTex` (CPU colouring); `renderer` setting auto/webgl/canvas2d, automatic fallback on context loss; auto uses CPU on software rasterisers.
+- `cf_stream.js`: `Ring` (typed-array ring, max aggregation, carry-forward, gap timeout, late merge, recenter, dirty-slot ranges), `AdaptiveScale` (p99.5, asymmetric EMA, hysteresis), `makeFeed` (mock depth feed, labelled example).
+- Chart: "Live depth (example)" layer + Depth button + rate selector; GL ring texture or CPU twin; stream mid-price step line (batched paths); `nowMin` follows the stream clock while it runs.
+- Tests: `tests/js/test_stream.js` (ring semantics, throughput), `tests/ui/verify_stream.py` (GL vs CPU parity for heat and depth, rAF cadence at 20k/500k upd/s, ingest throughput), `tools/check_js.sh` (syntax). Golden/dynamics tests read `VT_CF.cpuTex()`.
+- Measured (headless Chromium, software GL): ingest ≈ 8M upd/s (browser) / 100M+ (ring only); rAF p95 18-19 ms at 500k upd/s; draw ≈ 2.6 ms. Not yet measured on a real GPU.
+- Open: real depth/tape feed, recenter of the mock feed, rolling/session scale windows, rank blend.

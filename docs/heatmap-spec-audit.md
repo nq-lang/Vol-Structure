@@ -30,16 +30,16 @@ Where the spec and the owner's later written directives disagree, the owner's di
 | 6.2 | Ingest / sampler / render split | Partial | one column per model epoch, not per second |
 | 6.3 | Live-column value easing | Match | live column + projection ease previous -> new model state; history frozen |
 | 6.4 | Auto-recenter with easing | Match | 180 ms time constant; one shared transform; manual pan/zoom and Reset view |
-| 6.5 | GPU texture + shader | Deviation | canvas2D CPU bitmap, nearest-neighbour; WebGL2 planned |
+| 6.5 | GPU texture + shader | Match | WebGL2 R32F raw texture + LUT + shader (nearest sampling, uniforms for H/L/gamma/bands); canvas2D twin (pixel-parity tested); auto picks CPU on software rasterisers |
 | 7 | Pause / scroll-back, colours identical | Match | replay slider; lock freezes H |
-| 7 | Ring buffer, max decimation, memory pressure | Partial | ring buffer (720 states) done; decimation not needed at one value per state |
+| 7 | Ring buffer, max decimation, memory pressure | Match (depth layer) | `CFStream.Ring` fixed typed-array ring (4096 cols x 1024 rows), max aggregation per column and when columns outnumber pixels; model-state ring 720 |
 | 8.1 | Now line at 82%, dotted | Match | test asserts 0.82 +/- 0.005 |
 | 8.2-8.3 | Step price line, green up / red down, head on now line | Match | source = example bars (order-flow API pending) |
 | 9 | Future zone = live state projected flat, no seam | Match | same texture, same scale |
 | 9 | Red/green dashed markers | Match | bid/ask are example data; drawn >= 8 px apart for legibility |
 | 10 | Rows 9 px + 1 px gap | Partial | auto bucket gives 8-13 px rows; `rowPx` and `bucket` settings |
 | 13 | Crosshair readout, L/H legend, pan/zoom, live button | Match | |
-| 3.6 | Feed-gap handling | Partial | gaps longer than the timeout draw empty columns (tested); no real feed yet
+| 3.6 | Feed-gap handling | Match (depth layer) | carry-forward limited to the gap timeout; unit-tested; model-state gaps tested; no real feed yet
 
 ## Acceptance scenarios (section 15)
 | # | Scenario | Result |
@@ -56,7 +56,7 @@ Where the spec and the owner's later written directives disagree, the owner's di
 | 12 | Feed gap | Pass on mock states (empty columns after the timeout) |
 | 13 | Scale lock | Pass |
 | 14 | Empty / single value | Pass for empty / NaN / H=0; single value not capped |
-| 15 | 60 fps / memory | Not benchmarked |
+| 15 | 60 fps / memory | Pass (headless, software GL): rAF p95 18-19 ms at 20k and 500k upd/s, draw ≈2.6 ms; ingest ≈8M upd/s; not yet measured on a real GPU |
 
 ## Architecture blockers and fixes
 1. Model snapshots arrive per epoch, not per second: the spec's 1 s column grid needs the publisher/protocol milestone or the live feed.
