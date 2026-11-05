@@ -378,3 +378,6 @@ T2-5 hedging, T2-6 vol/risk, T2-7 multibook_v1, T2-8 scoped LLM layer, cross-boo
 - Tests: `tests/js/test_stream.js` (ring semantics, throughput), `tests/ui/verify_stream.py` (GL vs CPU parity for heat and depth, rAF cadence at 20k/500k upd/s, ingest throughput), `tools/check_js.sh` (syntax). Golden/dynamics tests read `VT_CF.cpuTex()`.
 - Measured (headless Chromium, software GL): ingest ≈ 8M upd/s (browser) / 100M+ (ring only); rAF p95 18-19 ms at 500k upd/s; draw ≈ 2.6 ms. Not yet measured on a real GPU.
 - Open: real depth/tape feed, recenter of the mock feed, rolling/session scale windows, rank blend.
+
+## Forward projection
+- `chart_snapshot.h`: per-strike forward factors for struct/gex (gamma ~ phi(d1)/sqrt(T) re-scaled to remaining time; touch probability over shrinking horizon), emitted as `f[17]` + `fwd{step_min,n}`; `cf_chart.js` `rowVals(c,g,id,tau)` + `fwd` setting; `tests/ui/verify_forward.py`. Limits: one sigma/T per book (ATM IV, ref DTE or time to 16:00 ET for intraday); spot assumed flat; other metrics flat; golden checksums regenerated.

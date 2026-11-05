@@ -35,7 +35,7 @@ Where the spec and the owner's later written directives disagree, the owner's di
 | 7 | Ring buffer, max decimation, memory pressure | Match (depth layer) | `CFStream.Ring` fixed typed-array ring (4096 cols x 1024 rows), max aggregation per column and when columns outnumber pixels; model-state ring 720 |
 | 8.1 | Now line at 82%, dotted | Match | test asserts 0.82 +/- 0.005 |
 | 8.2-8.3 | Step price line, green up / red down, head on now line | Match | source = example bars (order-flow API pending) |
-| 9 | Future zone = live state projected flat, no seam | Match | same texture, same scale |
+| 9 | Future zone = live state projected flat, no seam | Match + extended | owner directive: forward-looking. Default `project` applies C++ forward factors (gamma time-scaling, touch-horizon) for Structural / Net GEX, continuous at now (tested); `flat` = spec behaviour. Same texture, same scale |
 | 9 | Red/green dashed markers | Match | bid/ask are example data; drawn >= 8 px apart for legibility |
 | 10 | Rows 9 px + 1 px gap | Partial | auto bucket gives 8-13 px rows; `rowPx` and `bucket` settings |
 | 13 | Crosshair readout, L/H legend, pan/zoom, live button | Match | |

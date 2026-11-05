@@ -93,22 +93,30 @@ inline std::string chart_json(const AggregateResult& res, const reg::Registry& r
     bool firstM = true;
     // gex: every strike of the horizon's dealer gamma; other Greeks: structural (card) strikes only (that is all the models emit per strike)
     for (int hz = 0; hz < 2; ++hz) {
-        std::map<std::string, std::vector<std::pair<double, double>>> ms; std::map<std::string, std::vector<std::string>> mbk; std::vector<std::pair<double, double>> gx, sx; std::vector<std::string> gb;
+        std::map<std::string, std::vector<std::pair<double, double>>> ms; std::map<std::string, std::vector<std::string>> mbk; std::vector<std::pair<double, double>> gx, sx; std::vector<std::string> gb; std::vector<std::vector<double>> gf, sf;
+        double nowMinTod = -1; { std::string asof = res.books.empty() ? std::string() : res.books.begin()->second.insight.ses.as_of; auto cp = asof.rfind(':'); if (cp != std::string::npos && cp >= 2 && cp + 2 < asof.size() + 0) { int hh = std::atoi(asof.substr(cp - 2, 2).c_str()), mm = std::atoi(asof.substr(cp + 1, 2).c_str()); if (hh >= 0 && hh < 24) nowMinTod = hh * 60 + mm; } }
         for (auto& b : L.books) { if (!included.count(b.id)) continue; auto bi = res.books.find(b.id); if (bi == res.books.end()) continue; const HorizonMetrics& HM = hz ? bi->second.insight.swinging : bi->second.insight.intraday; if (!HM.ok) continue;
             const Dist& DD = bi->second.dist; double hmax = 0; if (DD.ok) for (double h : DD.hist) hmax = std::max(hmax, h);
             for (auto& kv : HM.gamma_by_strike) { auto ax = to_axis(A, b, kv.first); if (ax) { gx.push_back({*ax, kv.second}); gb.push_back(b.id);
                 // structural liquidity: dealer exposure x risk-neutral touch chance x RND density (neutral 0.5 when the distribution is unavailable)
                 double dn = 0.5, pt = 0.5; if (DD.ok && DD.dx > 0 && hmax > 0 && !DD.hist.empty()) { double ix = (kv.first - DD.x0) / DD.dx; if (ix >= 0 && ix < (double)DD.hist.size()) { dn = DD.hist[(size_t)ix] / hmax; double cdf = 0; for (size_t i2 = 0; i2 < (size_t)ix; ++i2) cdf += DD.hist[i2]; pt = std::min(1.0, 2.0 * std::min(cdf, 1.0 - cdf)); } else { dn = 0; pt = 0.02; } }
-                sx.push_back({*ax, kv.second * (0.5 + 0.5 * pt) * (0.6 + 0.4 * dn)}); } }
+                sx.push_back({*ax, kv.second * (0.5 + 0.5 * pt) * (0.6 + 0.4 * dn)});
+                // forward projection (factors multiply the value now): dealer gamma re-scaled to the remaining time (BS gamma ~ phi(d1)/sqrt(T)) and the touch chance re-evaluated over the shrinking horizon (reflection principle)
+                { std::vector<double> fg, fs; double sig = std::max(0.05, bi->second.pricing.atm_iv) * volk, Tm = hz ? std::max(1, bi->second.pricing.ref_dte) * 1440.0 : std::max(5.0, nowMinTod >= 0 ? 960.0 - nowMinTod : 195.0), mn = std::log(std::max(1e-9, *ax) / std::max(1e-9, A.spot));
+                  auto phi = [](double x) { return std::exp(-0.5 * x * x) / 2.5066282746310002; }; auto Phi = [](double x) { return 0.5 * std::erfc(-x / 1.4142135623730951); };
+                  auto gam = [&](double Tmin) { double T = std::max(5.0, Tmin) / 525600.0, sT = sig * std::sqrt(T), d1 = (-mn + 0.5 * sig * sig * T) / sT; return phi(d1) / std::sqrt(T); };
+                  auto tch = [&](double Tmin) { double T = std::max(5.0, Tmin) / 525600.0; return std::min(1.0, 2.0 * (1.0 - Phi(std::fabs(mn) / (sig * std::sqrt(T))))); };
+                  double g0 = gam(Tm), t0 = tch(Tm); for (int i = 0; i < 17; ++i) { double Tr = Tm - 15.0 * i, gr = g0 > 1e-12 ? std::min(4.0, gam(Tr) / g0) : 1.0, tr = (0.5 + 0.5 * tch(Tr)) / (0.5 + 0.5 * t0); fg.push_back(gr); fs.push_back(std::min(4.0, gr * tr)); }
+                  gf.push_back(fg); sf.push_back(fs); } } }
             for (auto& c : HM.cards) { auto ax = to_axis(A, b, c.strike); if (!ax) continue;
                 ms["vanna"].push_back({*ax, c.vanna_up}); ms["charm"].push_back({*ax, c.charm_day}); ms["vomma"].push_back({*ax, c.vomma}); ms["vega"].push_back({*ax, c.vega}); ms["delta"].push_back({*ax, c.delta_sh}); ms["ptouch"].push_back({*ax, c.p_touch}); ms["oi"].push_back({*ax, c.oi}); for (auto* k : {"vanna", "charm", "vomma", "vega", "delta", "ptouch", "oi"}) mbk[k].push_back(b.id); } }
-        auto emit = [&](const std::string& id, const std::string& label, const std::vector<std::pair<double, double>>& v, const std::vector<std::string>& bk, bool all) {
+        auto emit = [&](const std::string& id, const std::string& label, const std::vector<std::pair<double, double>>& v, const std::vector<std::string>& bk, bool all, const std::vector<std::vector<double>>* fw = nullptr) {
             if (v.empty()) { return; }
             std::vector<double> mag; for (auto& p : v) mag.push_back(std::fabs(p.second)); std::sort(mag.begin(), mag.end()); double sc3 = mag[std::min(mag.size() - 1, (size_t)std::floor(0.98 * (mag.size() - 1) + 0.5))]; if (sc3 <= 0) { sc3 = mag.back(); }
             if (sc3 <= 0) { return; }
             o << (firstM ? "" : ",") << "{\"id\":\"" << id << "\",\"hz\":\"" << (hz ? "swinging" : "intraday") << "\",\"label\":" << q(label) << ",\"all\":" << (all ? "true" : "false") << ",\"scale\":" << n(sc3) << ",\"strikes\":["; firstM = false;
-            for (size_t i = 0; i < v.size(); ++i) { o << (i ? "," : "") << "{\"price\":" << n(v[i].first) << ",\"v\":" << n(v[i].second) << ",\"book\":" << q(bk[i]) << "}"; } o << "]}"; };
-        emit("struct", "Structural liquidity $ (dealer flow x touch prob x distribution)", sx, gb, true); emit("gex", "Net GEX $/1% (every strike)", gx, gb, true);
+            for (size_t i = 0; i < v.size(); ++i) { o << (i ? "," : "") << "{\"price\":" << n(v[i].first) << ",\"v\":" << n(v[i].second) << ",\"book\":" << q(bk[i]); if (fw && i < fw->size() && !(*fw)[i].empty()) { o << ",\"f\":["; for (size_t j = 0; j < (*fw)[i].size(); ++j) o << (j ? "," : "") << std::round((*fw)[i][j] * 1000.0) / 1000.0; o << "]"; } o << "}"; } o << "]" << (fw ? ",\"fwd\":{\"step_min\":15,\"n\":17}" : "") << "}"; };
+        emit("struct", "Structural liquidity $ (dealer flow x touch prob x distribution)", sx, gb, true, &sf); emit("gex", "Net GEX $/1% (every strike)", gx, gb, true, &gf);
         emit("vanna", "Vanna (structural strikes)", ms["vanna"], mbk["vanna"], false); emit("charm", "Charm sh/day (structural strikes)", ms["charm"], mbk["charm"], false); emit("vomma", "Vomma (structural strikes)", ms["vomma"], mbk["vomma"], false);
         emit("vega", "Vega $/vol pt (structural strikes)", ms["vega"], mbk["vega"], false); emit("delta", "Dealer delta hedge sh (structural strikes)", ms["delta"], mbk["delta"], false); emit("ptouch", "Touch probability (structural strikes)", ms["ptouch"], mbk["ptouch"], false); emit("oi", "Open interest (structural strikes)", ms["oi"], mbk["oi"], false);
     }

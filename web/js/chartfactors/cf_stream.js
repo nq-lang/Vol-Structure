@@ -84,9 +84,9 @@
             for (let i = 0; i < n; i++) {
                 const f = (i + rnd()) / n, t = t0 + f * (t1 - t0), mid = mid0 + (mid1 - mid0) * f, rm = ((o.top - mid) / o.bucket) | 0; ts[i] = t;
                 let d = Math.floor(-Math.log(1 - rnd()) * spread) + 1; if (rnd() < 0.5) d = -d; let r = rm + d;
-                if (rnd() < 0.05) { r = rm + ((rnd() * 80 - 40) | 0); r -= ((r % wallStep) + wallStep) % wallStep; }              // round-number walls
-                if (r < 0) r = 0; else if (r >= rows) r = rows - 1; const wall = r % wallStep === 0, prev = size[r], base = (220 * Math.exp(-Math.abs(r - rm) / 14) + 18) * (wall ? 6 : 1);
-                const u = rnd(); let v; if (u < 0.10) v = 0; else if (prev > 0 && u < 0.88) v = prev * (0.88 + 0.24 * rnd()); else v = base * (0.4 + 1.6 * rnd());
+                if (rnd() < 0.02) { r = rm + ((rnd() * 80 - 40) | 0); r -= ((r % wallStep) + wallStep) % wallStep; }              // round-number walls
+                if (r < 0) r = 0; else if (r >= rows) r = rows - 1; const wall = r % wallStep === 0, prev = size[r], base = (220 * Math.exp(-Math.abs(r - rm) / 14) + 18) * (wall ? 3 : 1);
+                const u = rnd(); let v; if (u < 0.12) v = 0; else if (prev > 0 && u < 0.80) v = prev * (0.88 + 0.24 * rnd()); else v = base * (0.4 + 1.6 * rnd());
                 size[r] = v; px[i] = o.top - (r + 0.5) * o.bucket; sz[i] = v;
             }
             st.mid = mid1; return { n, mid: mid1, ts, px, sz };
