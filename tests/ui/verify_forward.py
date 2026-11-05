@@ -33,5 +33,9 @@ with sync_playwright() as p:
     for h in d["history"][12:14]: pg.evaluate("(j)=>window.onChartFactors(j)", json.dumps(h) if not isinstance(h, str) else h)
     pg.wait_for_timeout(400)
     f1 = pg.evaluate("()=>{const S=VT_CF.state;S.texKey=S.rawKey='';VT_CF.draw();const cv=VT_CF.cpuTex(),x=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data;let h=0;for(let i=0;i<x.length;i+=4)h=(h*31+x[i]+x[i+1]*3+x[i+2]*7)>>>0;return h}")
+    gx = pg.evaluate("""()=>{const S=VT_CF.state;S.set.renderer='canvas2d';VT_CF.draw();const g=VT_CF.geom(),cv=document.getElementById('vt-cf-cv'),dpr=window.devicePixelRatio||1,x=cv.getContext('2d'),y=Math.floor((g.y0+g.ph-4)*dpr);const row=x.getImageData(0,y,cv.width,1).data,px=m=>Math.floor((Math.round(g.xOf(m))+0.5)*dpr)*4,hits=[],bg=[];
+        for(let m=Math.ceil(g.v.t0/5)*5;m<g.v.t1-5;m+=5){const a=px(m),c=px(m+2.5);hits.push(row[a]+row[a+1]+row[a+2]);bg.push(row[c]+row[c+1]+row[c+2]);}
+        return {VH:g.VH,n:hits.length,bright:hits.filter((v,i)=>v>bg[i]).length}}""")
+    print("grid", gx); chk(gx["VH"] == 0, "volume panel removed"); chk(gx["n"] >= 10 and gx["bright"] >= gx["n"] * 0.7, f"5-minute vertical borders drawn {gx}")
     chk(f0 != f1, "forward projection re-computed when a new epoch arrives"); chk(not errs, f"console errors {errs[:2]}"); b.close()
 print("FAILURES:", F if F else "none"); sys.exit(1 if F else 0)

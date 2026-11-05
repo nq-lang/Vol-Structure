@@ -462,62 +462,6 @@
   "fixture_id": "synthetic-v1"
  },
  {
-  "file": "phase-5/SPX_single_pca2d_layout_desktop.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T22:49:18-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-5/SPX_single_tsne2d_layout_desktop.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T22:49:19-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-5/SPX_single_pca2d_layout_mobile.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T22:49:24-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-5/SPX_single_tsne2d_layout_mobile.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T22:49:26-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-3/SPX_single_pca2d_controls_desktop.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T22:49:31-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-3/SPX_single_tsne2d_confidence_desktop.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T22:49:34-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-3/SPX_single_pca2d_controls_mobile.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T22:49:37-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-3/SPX_single_tsne2d_confidence_mobile.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T22:49:40-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
   "file": "phase-10/VIX_volatility_section_desktop.png",
   "commit": "no-git",
   "timestamp": "2026-11-04T22:49:43-0500",
@@ -546,34 +490,6 @@
   "fixture_id": "synthetic-v1"
  },
  {
-  "file": "phase-13/chart_factors_top_desktop.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T22:50:18-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-13/chart_factors_sections_desktop.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T22:50:19-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-13/chart_factors_top_desktop2x.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T22:50:42-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-13/chart_factors_sections_desktop2x.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T22:50:43-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
   "file": "phase-7/NQ_family_model_card_desktop.png",
   "commit": "no-git",
   "timestamp": "2026-11-04T22:51:09-0500",
@@ -598,6 +514,90 @@
   "file": "phase-7/NQ_family_pca2d_grouped_arrows_mobile.png",
   "commit": "no-git",
   "timestamp": "2026-11-04T22:51:15-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-13/chart_factors_top_desktop.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-04T23:14:09-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-13/chart_factors_sections_desktop.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-04T23:14:09-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-13/chart_factors_top_desktop2x.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-04T23:14:32-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-13/chart_factors_sections_desktop2x.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-04T23:14:33-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-5/SPX_single_pca2d_layout_desktop.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-04T23:14:37-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-5/SPX_single_tsne2d_layout_desktop.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-04T23:14:39-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-5/SPX_single_pca2d_layout_mobile.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-04T23:14:44-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-5/SPX_single_tsne2d_layout_mobile.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-04T23:14:46-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-3/SPX_single_pca2d_controls_desktop.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-04T23:14:51-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-3/SPX_single_tsne2d_confidence_desktop.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-04T23:14:53-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-3/SPX_single_pca2d_controls_mobile.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-04T23:14:57-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-3/SPX_single_tsne2d_confidence_mobile.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-04T23:14:59-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  }
