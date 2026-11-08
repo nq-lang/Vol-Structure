@@ -381,3 +381,6 @@ T2-5 hedging, T2-6 vol/risk, T2-7 multibook_v1, T2-8 scoped LLM layer, cross-boo
 
 ## Forward projection
 - `chart_snapshot.h`: per-strike forward factors for struct/gex (gamma ~ phi(d1)/sqrt(T) re-scaled to remaining time; touch probability over shrinking horizon), emitted as `f[17]` + `fwd{step_min,n}`; `cf_chart.js` `rowVals(c,g,id,tau)` + `fwd` setting; `tests/ui/verify_forward.py`. Limits: one sigma/T per book (ATM IV, ref DTE or time to 16:00 ET for intraday); spot assumed flat; other metrics flat; golden checksums regenerated.
+
+## Codespaces demo
+- `.devcontainer/devcontainer.json` (port 8080 auto-forwarded, opens in browser), `tools/serve_demo.py` (serves web/ + fixtures, gzip), `web/demo/demo.js` (synthetic feeder for every model, continuous updates, scope-aware), `tests/ui/verify_demo.py`.

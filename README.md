@@ -1,8 +1,14 @@
-# Volatility Analysis terminal
+# Vol Structure
+
+Volatility Analysis terminal (repo: `nq-lang/Vol-Structure`).
 
 RTH options-derived structural volatility terminal. C++23 header-only quant core, a JSON bridge, and a vanilla-JS web UI (webview shell).
 All numbers in the UI come from the C++ models; the UI draws and never recomputes. Order-flow layers (L2 depth, tape, bid/ask size, candles) are
 **labelled mock/example data** until the order-flow API is connected.
+
+## Run it (GitHub Codespaces / any machine) - every model with synthetic data
+Open the repo in a Codespace: `.devcontainer/devcontainer.json` starts `tools/serve_demo.py` on port 8080 and the forwarded port opens in the browser automatically (Ports tab -> "Vol Structure terminal"). Locally: `python3 tools/serve_demo.py` then open http://localhost:8080.
+The demo server serves the production UI with a feeder (`web/demo/demo.js`) that drives every model from the generated fixtures in `preview/` and keeps them updating: model channels (GEX, DEX, vanna, charm, speed, color, theta, VRP, RND, ...), regime / PCA / t-SNE views, volatility card, pricing surfaces, greeksChannel, Strike Insights / Strike Lens / Hedge Flow, model card, sidebar read, Chart Factors (new model epochs every 4 s, forward projection, live depth stream). Starts in Family NQ; click any ticker (NQ ES GC CL SI YM, SPX...) to switch scope. A "SYNTHETIC DATA - DEMO" badge is always shown. When real data arrives, run the app shell instead of the demo server.
 
 ## Pages
 | Page | What it shows |
