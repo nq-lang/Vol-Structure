@@ -41,12 +41,19 @@ with sync_playwright() as p:
             for(const price of [sp,sp+half*0.33,sp-half*0.51]){c.field.metrics=[{id:'gex',hz:'intraday',scale:1,strikes:[{price,v:1}]}];const v=VT_CF.rowVals(c,g,'gex');let ai=0;for(let i=0;i<v.length;i++)if(v[i]>v[ai])ai=i;out.push(Math.abs(ai-g.rowOf(price)));}c.field.metrics=old;}
             VT_CF.state.view=null;VT_CF.draw();return out;}""")
         chk(all(e <= 0 for e in res), f"peak heat row == strike row: {res}")
-        ramp = pg.evaluate("""()=>{const L=VT_CF.LUT.pos,at=t=>{const i=Math.round(t*1023)*3;return [L[i],L[i+1],L[i+2]]};const n0=at(0),n1=at(.10),rb=at(.28),dg=at(.46),ly=at(.60),by=at(.78),rd=at(1),nr=at(.90);
+        ramp = pg.evaluate("""()=>{VT_CF.state.set.palette='owner';VT_CF.applyPalette();const L=VT_CF.LUT.pos,at=t=>{const i=Math.round(t*1023)*3;return [L[i],L[i+1],L[i+2]]};const n0=at(0),n1=at(.10),rb=at(.28),dg=at(.46),ly=at(.60),by=at(.78),rd=at(1),nr=at(.90);
             const sym=JSON.stringify(VT_CF.rgbFor(5e8,1e9))===JSON.stringify(VT_CF.rgbFor(-5e8,1e9));
             let mono=true,prevL=-1;const lum=[];for(let k=0;k<=60;k++){const q=at(k/60);lum.push(.2126*q[0]+.7152*q[1]+.0722*q[2]);}
             let maxJump=0;for(let k=1;k<=1023;k++){const a=at((k-1)/1023),b=at(k/1023);maxJump=Math.max(maxJump,Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1])+Math.abs(a[2]-b[2]));}
             return {navy:Math.abs(n0[0]-11)<3&&Math.abs(n0[1]-19)<3&&Math.abs(n0[2]-43)<3,deep:n1[2]>n1[0]*2&&n1[2]<110,royal:rb[2]>rb[0]*2&&rb[2]>rb[1]*1.5&&rb[2]>150,gold:dg[0]>130&&dg[1]>100&&dg[2]<60&&dg[0]<200,light:ly[0]>230&&ly[1]>210,bright:by[0]>240&&by[1]>200&&by[2]<40,red:Math.abs(rd[0]-255)<3&&Math.abs(rd[1]-30)<3&&Math.abs(rd[2]-30)<3,redReserved:nr[1]>150,sym,smooth:maxJump<14,floor:VT_CF.rgbFor(1e6,1e9)[3]===0}}""")
-        chk(all(ramp.values()), f"ramp navy->royal->dark gold->light yellow->bright yellow->red, symmetric, no banding, noise floor invisible: {ramp}")
+        pg.evaluate("()=>{VT_CF.state.set.palette='bookmap';VT_CF.applyPalette()}")
+        bm = pg.evaluate("""()=>{VT_CF.state.set.palette='bookmap';VT_CF.applyPalette();const L=VT_CF.LUT.pos,at=t=>{const i=Math.round(t*1023)*3;return [L[i],L[i+1],L[i+2]]},lum=q=>.2126*q[0]+.7152*q[1]+.0722*q[2];
+            let mono=true,pl=-1;for(const t of [0,.1,.26,.42,.56,.7,.84,1]){const l=lum(at(t));if(l<pl-2)mono=false;pl=l;}let dip=0,pk=0;for(let k=0;k<=200;k++){const l=lum(at(k/200));pk=Math.max(pk,l);dip=Math.max(dip,pk-l);if(k/200>.9)pk=l;}if(dip>12)mono=false;let mj=0;for(let k=1;k<=1023;k++){const a=at((k-1)/1023),b=at(k/1023);mj=Math.max(mj,Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1])+Math.abs(a[2]-b[2]));}
+            const z=at(0),lo=at(.26),teal=at(.5),amber=at(.72),hot=at(1),mid=VT_CF.rgbFor(3e8,1e9),top=VT_CF.rgbFor(1e9,1e9);
+            return {slate:z[0]<30&&z[1]<32&&z[2]<40,cobalt:lo[2]>lo[0]*2&&lo[2]>120,teal:teal[2]>teal[0]*1.4&&teal[1]>120,amber:amber[0]>190&&amber[1]>120&&amber[2]<60,hot:hot[0]>250&&hot[1]>225&&hot[2]>180,mono,smooth:mj<16,
+              logMid:mid[3]>0.8&&lum(mid)>60,cap:Math.abs(top[3]-0.85)<0.01,floor:VT_CF.rgbFor(1e6,1e9)[3]===0,curve:VT_CF.state.set.curve,bg:VT_CF.state.set.palette}}""")
+        chk(all(v for k,v in bm.items() if k not in('curve','bg')) and bm["curve"]=="log", f"bookmap palette: slate->cobalt->teal->amber->white-hot, luminance rises, log curve keeps mid-tier visible, opacity capped at 85%: {bm}")
+        chk(all(ramp.values()), f"[owner palette] ramp navy->royal->dark gold->light yellow->bright yellow->red, symmetric, no banding, noise floor invisible: {ramp}")
         er = pg.evaluate("()=>[VT_CF.eref('gex'),VT_CF.eref('vanna'),VT_CF.eref('hedge')]"); chk(all(e > 0 for e in er), f"fixed E_ref per metric {er}")
         er2 = pg.evaluate("()=>{const S=VT_CF.state;const c0=S.hist.length;const a=VT_CF.eref('gex');S.view=null;VT_CF.draw();return [a,VT_CF.eref('gex')]}"); chk(er2[0] == er2[1], "E_ref unchanged by redraw / pan")
         # every metric selectable must render rows (all three models drive the heatmap)
@@ -56,7 +63,7 @@ with sync_playwright() as p:
         pg.click('#vt-cf-metrics button[data-m="struct"]'); pg.wait_for_timeout(100)
         # layout per spec: now line at 82% of the plot, ~10 px row pitch, pills carry asset+strike, chips/outcomes present, price-line head on the now line
         lay = pg.evaluate("()=>{VT_CF.state.view=null;VT_CF.draw();const g=VT_CF.geom(),gr=VT_CF.grid(),S=VT_CF.state,nm=VT_CF.nowMin();return {np:(g.xOf(nm)-g.x0)/(g.x1-g.x0),pitch:g.ph/gr.R,head:S.priceHead?Math.abs(S.priceHead.x-g.xOf(nm)):null,chips:(S.chips||[]).map(c=>c.text),sp:(S.chips||[]).map(c=>c.ly).sort((a,b)=>a-b)}}")
-        chk(abs(lay["np"] - 0.82) < 0.005, f"now line at 82%: {lay['np']:.3f}"); chk(7.5 <= lay["pitch"] <= 13.5, f"row pitch {lay['pitch']:.1f}px"); chk(lay["head"] is not None and lay["head"] < 0.5, "price line head on the now line")
+        chk(abs(lay["np"] - 0.82) < 0.005, f"now line at 82%: {lay['np']:.3f}"); chk(2.5 <= lay["pitch"] <= 7, f"row pitch {lay['pitch']:.1f}px"); chk(lay["head"] is not None and lay["head"] < 0.5, "price line head on the now line")
         chk(len(lay["chips"]) >= 2 and all(any(w in t for w in ("MAGNET", "PINNING", "REJECTION", "AMPLIFIER", "LIKELY")) for t in lay["chips"]), f"outcome chips {lay['chips'][:3]}"); chk(all(b2 - a >= 18.99 for a, b2 in zip(lay["sp"], lay["sp"][1:])), "chips >= 19 px apart")
         rl = pg.evaluate("VT_CF.labels().map(l=>l.text)"); chk(len(rl) > 0 and all((" \u2013 " in t) or t.startswith("NQ $") for t in rl), f"pills carry asset + strike: {rl[:2]}")
         br = pg.evaluate("""()=>{const S=VT_CF.state;S.set.fade=true;S.mouse=null;S.view=null;VT_CF.draw();const cv=document.getElementById('vt-cf-cv'),x=cv.getContext('2d'),g=VT_CF.geom(),d=window.devicePixelRatio||1,nm=VT_CF.nowMin(),nx=g.xOf(nm);
@@ -144,8 +151,8 @@ with sync_playwright() as p:
         pg.evaluate("(j)=>window.onChartFactors(j)", json.dumps(LP["NQ_family"]["chart"])); pg.wait_for_timeout(200)
         gold = pg.evaluate("""()=>{const S=VT_CF.state,H=S.hist,sp=H[H.length-1].c.axis.spot;const out={};
             const hash=cv=>{const d=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data;let h=2166136261;for(let i=0;i<d.length;i++){h^=d[i];h=Math.imul(h,16777619)>>>0;}return h.toString(16)+':'+cv.width+'x'+cv.height};
-            S.set=Object.assign(S.set,{scale:'fixed',eref:'backend',blend:'smooth',backfill:'carry',gapMin:15,gamma:0.7,noise:0.03,bands:0,bright:1,negWeight:1,rowPx:9});S.sc={};
-            for(const [name,pos] of [['start',H[0].t+1],['mid',H[10].t+0.7],['late',H[17].t+0.3],['live',null]]){S.view={t0:H[0].t-4,t1:H[H.length-1].t+8,p0:sp-420,p1:sp+420};S.pos=pos;S.texKey='';S.sc={};for(const m of ['struct','gex','ptouch']){S.metric=m;S.texKey='';S.sc={};VT_CF.draw();out[name+':'+m]=hash(S.tex);}}
+            S.set=Object.assign(S.set,{scale:'fixed',eref:'backend',blend:'smooth',backfill:'carry',gapMin:15,gamma:0.7,noise:0.03,bands:0,bright:1,negWeight:1,rowPx:9,palette:'bookmap',curve:'log',logK:4,alphaMax:0.85,tween:900,fwd:'project',rowGap:0});VT_CF.applyPalette();S.sc={};
+            for(const [name,pos] of [['start',H[0].t+1],['mid',H[10].t+0.7],['late',H[17].t+0.3],['live',null]]){S.view={t0:H[0].t-4,t1:H[H.length-1].t+8,p0:sp-420,p1:sp+420};S.pos=pos;S.animT0=-1e9;S.texKey='';S.sc={};for(const m of ['struct','gex','ptouch']){S.metric=m;S.texKey='';S.sc={};VT_CF.draw();out[name+':'+m]=hash(S.tex);}}
             S.pos=null;S.view=null;S.metric='struct';return out}""")
         gpath = VT_ROOT + "/tests/golden/cf_nq_heat.json"
         if _os.environ.get("UPDATE_GOLDEN") or not _os.path.exists(gpath):

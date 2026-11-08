@@ -7,7 +7,7 @@
     const VS = '#version 300 es\nprecision highp float;\nvoid main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));gl_Position=vec4(p*2.0-1.0,0.0,1.0);}';
     const FS = '#version 300 es\nprecision highp float; precision highp int; precision highp sampler2D;\n' +
         'uniform sampler2D uRaw; uniform sampler2D uLut; uniform vec2 uOrigin; uniform vec2 uCell; uniform ivec2 uSize;\n' +
-        'uniform int uRing, uAbsOff, uAbsMin, uAbsMax; uniform float uH, uL, uGamma, uBands, uBright, uNeg, uDpr, uHpx; out vec4 o;\n' +
+        'uniform int uRing, uAbsOff, uAbsMin, uAbsMax; uniform float uCurve, uLogK, uAlphaMax; uniform float uH, uL, uGamma, uBands, uBright, uNeg, uDpr, uHpx; out vec4 o;\n' +
         'void main(){\n' +
         '  float xl = gl_FragCoord.x / uDpr; float yl = (uHpx - gl_FragCoord.y) / uDpr;\n' +
         '  int c = int(floor((xl - uOrigin.x) / uCell.x)); int r = int(floor((yl - uOrigin.y) / uCell.y));\n' +
@@ -17,9 +17,9 @@
         '  else { if (c < 0 || c >= uSize.x) { o = vec4(0.0); return; } v = texelFetch(uRaw, ivec2(c, r), 0).r; }\n' +
         '  float a = abs(v) * (v < 0.0 ? uNeg : 1.0);\n' +
         '  if (!(a > 0.0)) { o = vec4(0.0); return; }\n' +
-        '  float lo = max(uL, 0.0); float t = clamp((a - lo) / max(uH - lo, uH * 1e-6), 0.0, 1.0); float tp = pow(t, uGamma);\n' +
+        '  float lo = max(uL, 0.0); float t = clamp((a - lo) / max(uH - lo, uH * 1e-6), 0.0, 1.0); float tp = uCurve > 0.5 ? log(1.0 + uLogK * t) / log(1.0 + uLogK) : pow(t, uGamma);\n' +
         '  if (uBands > 0.0) tp = floor(tp * uBands) / uBands;\n' +
-        '  float al = smoothstep(0.0, 0.08, tp); vec3 rgb = min(texture(uLut, vec2((tp * 1023.0 + 0.5) / 1024.0, 0.5)).rgb * uBright, vec3(1.0));\n' +
+        '  float al = smoothstep(0.0, 0.08, tp) * uAlphaMax; vec3 rgb = min(texture(uLut, vec2((tp * 1023.0 + 0.5) / 1024.0, 0.5)).rgb * uBright, vec3(1.0));\n' +
         '  o = vec4(rgb * al, al);\n}';
     function create() {
         const cv = document.createElement('canvas'); cv.width = 16; cv.height = 16;
@@ -27,7 +27,7 @@
         if (!gl) return null;
         const sh = (t, src) => { const s = gl.createShader(t); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
         let prog; try { prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog); if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog)); } catch (e) { console.warn('cf_gl: ' + e.message); return null; }
-        const U = {}; ['uRaw', 'uLut', 'uOrigin', 'uCell', 'uSize', 'uRing', 'uAbsOff', 'uAbsMin', 'uAbsMax', 'uH', 'uL', 'uGamma', 'uBands', 'uBright', 'uNeg', 'uDpr', 'uHpx'].forEach(n => U[n] = gl.getUniformLocation(prog, n));
+        const U = {}; ['uRaw', 'uLut', 'uOrigin', 'uCell', 'uSize', 'uRing', 'uAbsOff', 'uAbsMin', 'uAbsMax', 'uH', 'uL', 'uGamma', 'uBands', 'uCurve', 'uLogK', 'uAlphaMax', 'uBright', 'uNeg', 'uDpr', 'uHpx'].forEach(n => U[n] = gl.getUniformLocation(prog, n));
         const mk = () => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); return t; };
         let rawT = mk(); const lutT = mk(); gl.bindTexture(gl.TEXTURE_2D, lutT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         let soft = false; try { const e = gl.getExtension('WEBGL_debug_renderer_info'); soft = !!e && /swiftshader|llvmpipe|software|softpipe/i.test(String(gl.getParameter(e.UNMASKED_RENDERER_WEBGL))); } catch (e) { soft = false; }
@@ -43,7 +43,7 @@
             gl.viewport(0, 0, p.w, p.h); gl.disable(gl.BLEND); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); gl.useProgram(prog); gl.bindVertexArray(vao);
             gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, api.rawT || rawT); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, lutT); gl.uniform1i(U.uRing, api.ring); gl.uniform1i(U.uAbsOff, p.absOff | 0); gl.uniform1i(U.uAbsMin, p.absMin | 0); gl.uniform1i(U.uAbsMax, p.absMax | 0); gl.uniform1i(U.uRaw, 0); gl.uniform1i(U.uLut, 1);
             gl.uniform2f(U.uOrigin, p.ox, p.oy); gl.uniform2f(U.uCell, p.cw, p.ch); gl.uniform2i(U.uSize, api.size[0], api.size[1]);
-            gl.uniform1f(U.uH, p.H); gl.uniform1f(U.uL, p.L); gl.uniform1f(U.uGamma, p.gamma); gl.uniform1f(U.uBands, p.bands); gl.uniform1f(U.uBright, p.bright); gl.uniform1f(U.uNeg, p.neg); gl.uniform1f(U.uDpr, p.dpr); gl.uniform1f(U.uHpx, p.h);
+            gl.uniform1f(U.uH, p.H); gl.uniform1f(U.uL, p.L); gl.uniform1f(U.uGamma, p.gamma); gl.uniform1f(U.uBands, p.bands); gl.uniform1f(U.uCurve, p.curve || 0); gl.uniform1f(U.uLogK, p.logK || 4); gl.uniform1f(U.uAlphaMax, p.alphaMax == null ? 1 : p.alphaMax); gl.uniform1f(U.uBright, p.bright); gl.uniform1f(U.uNeg, p.neg); gl.uniform1f(U.uDpr, p.dpr); gl.uniform1f(U.uHpx, p.h);
             gl.drawArrays(gl.TRIANGLES, 0, 3); return true; };
         // read one device pixel (bottom-left origin flipped to top-left), returns premultiplied RGBA bytes
         api.pixel = (x, y) => { const b = new Uint8Array(4); gl.readPixels(x, cv.height - 1 - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, b); return Array.from(b); };

@@ -62,3 +62,17 @@ Where the spec and the owner's later written directives disagree, the owner's di
 1. Model snapshots arrive per epoch, not per second: the spec's 1 s column grid needs the publisher/protocol milestone or the live feed.
 2. CPU canvas bitmap: move the texture + LUT to WebGL2 (uniforms H, L, gamma, bands) once the feed exists; raw values are already stored, never colours.
 3. No ring buffer / gap timeout: add with the live feed.
+
+## Bookmap-style optimisation pass (owner attachment a58e5eb1)
+| Item | Status |
+|---|---|
+| Log / compressive transfer (outliers vs mid-tier) | Done: `curve: log` default (CDF-percentile rank not implemented: it breaks same-value = same-colour) |
+| Perceptual colour space | Done (OKLab LUT, both palettes) |
+| Charcoal background, 5-7 stop ramp slate -> cobalt -> cyan/teal -> amber -> orange-red -> white-hot | Done: `palette: bookmap` default, luminance tested; previous ramp kept as `owner` |
+| Luminance in lockstep with exposure | Done (stop luminance non-decreasing, test) |
+| No chunky bands: fine rows + smooth vertical blending | Done: 3 px rows, kernel 0.42 x strike spacing, no row separators |
+| Alpha cap 75-85% | Done: `alphaMax` 0.85, shader and CPU |
+| Layer order (bg/grid, heat, depth, price action, crosshair) | Done |
+| Tweening 500-1500 ms | Done: `tween` 900 ms live column; replay uses state-time easing |
+| Historical fade | Done: `fade` (past only, forward zone full intensity) |
+| GPU texture + LUT + shader | Done (WebGL2; curve/alpha are uniforms) |

@@ -25,7 +25,7 @@ with sync_playwright() as p:
     for h in d["history"][:12]: pg.evaluate("(j)=>window.onChartFactors(j)", json.dumps(h) if not isinstance(h, str) else h)
     for k, f in (("multibook", "onMultibook"), ("lens", "onStrikeLens"), ("chart", "onChartFactors")): pg.evaluate(f"(j)=>window.{f}(j)", json.dumps(d[k]))
     pg.click('[data-page="vt-page-cf"]'); pg.wait_for_timeout(300)
-    t = pg.evaluate("""()=>{const S=VT_CF.state;S.set.renderer='canvas2d';const grab=()=>{S.texKey=S.rawKey='';VT_CF.draw();const cv=VT_CF.cpuTex(),i=VT_CF.texInfo(),x=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data,nm=VT_CF.nowMin();return {x,w:cv.width,h:cv.height,c0:Math.floor(nm)-i.T0};};
+    t = pg.evaluate("""()=>{const S=VT_CF.state;S.set.renderer='canvas2d';const grab=()=>{S.animT0=-1e9;S.texKey=S.rawKey='';VT_CF.draw();const cv=VT_CF.cpuTex(),i=VT_CF.texInfo(),x=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data,nm=VT_CF.nowMin();return {x,w:cv.width,h:cv.height,c0:Math.floor(nm)-i.T0};};
         S.set.fwd='flat';const A=grab();S.set.fwd='project';const B=grab();let past=0,fut=0,far=0;for(let r=0;r<A.h;r++)for(let c=0;c<A.w;c++){const o=(r*A.w+c)*4;let d=0;for(let k=0;k<4;k++)d=Math.max(d,Math.abs(A.x[o+k]-B.x[o+k]));if(d>6){if(c<=A.c0)past++;else fut++;}}
         const ep0=S.shownEpoch;return {past,fut,w:A.w,c0:A.c0,ep0}}""")
     print("texture", t); chk(t["past"] == 0, "history unchanged by the projection setting"); chk(t["fut"] > 20, f"forward zone differs from flat ({t['fut']} cells)")

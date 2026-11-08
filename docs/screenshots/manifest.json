@@ -226,378 +226,378 @@
  {
   "file": "phase-1/ALL_selector_main_desktop.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:47:55-0500",
+  "timestamp": "2026-11-07T21:56:59-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-1/QQQ_popup_main_desktop.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:47:56-0500",
+  "timestamp": "2026-11-07T21:56:59-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-1/QQQ_multibook_main_desktop.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:47:56-0500",
+  "timestamp": "2026-11-07T21:57:00-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-1/NQ_family_main_desktop.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:47:56-0500",
+  "timestamp": "2026-11-07T21:57:00-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-1/NQ_singlebook_picker_main_desktop.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:47:57-0500",
+  "timestamp": "2026-11-07T21:57:00-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-1/NQ_singlebook_NVDA_main_desktop.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:47:57-0500",
+  "timestamp": "2026-11-07T21:57:01-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-1/ALL_selector_main_mobile.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:47:59-0500",
+  "timestamp": "2026-11-07T21:57:03-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-1/QQQ_popup_main_mobile.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:00-0500",
+  "timestamp": "2026-11-07T21:57:03-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-1/QQQ_multibook_main_mobile.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:00-0500",
+  "timestamp": "2026-11-07T21:57:04-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-1/NQ_family_main_mobile.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:01-0500",
+  "timestamp": "2026-11-07T21:57:04-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-1/NQ_singlebook_picker_main_mobile.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:01-0500",
+  "timestamp": "2026-11-07T21:57:04-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-1/NQ_singlebook_NVDA_main_mobile.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:01-0500",
+  "timestamp": "2026-11-07T21:57:04-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-4/SPX_multibook_pricing_lens_desktop.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:06-0500",
+  "timestamp": "2026-11-07T21:57:09-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-4/SPX_multibook_greeks_lens_desktop.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:08-0500",
+  "timestamp": "2026-11-07T21:57:10-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-4/SPX_multibook_degraded_greeks_lens_desktop.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:09-0500",
+  "timestamp": "2026-11-07T21:57:11-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-4/GC_family_pricing_lens_desktop.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:10-0500",
+  "timestamp": "2026-11-07T21:57:12-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-4/SPX_multibook_pricing_lens_mobile.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:13-0500",
+  "timestamp": "2026-11-07T21:57:14-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-4/SPX_multibook_greeks_lens_mobile.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:14-0500",
+  "timestamp": "2026-11-07T21:57:16-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-4/SPX_multibook_degraded_greeks_lens_mobile.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:15-0500",
+  "timestamp": "2026-11-07T21:57:17-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-4/GC_family_pricing_lens_mobile.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:16-0500",
+  "timestamp": "2026-11-07T21:57:18-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-11/NQ_family_strike_lens_intraday_desktop.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:19-0500",
+  "timestamp": "2026-11-07T21:57:21-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-11/NQ_family_strike_lens_swinging_desktop.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:20-0500",
+  "timestamp": "2026-11-07T21:57:21-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-11/NQ_family_strike_lens_intraday_mobile.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:24-0500",
+  "timestamp": "2026-11-07T21:57:25-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-11/NQ_family_strike_lens_swinging_mobile.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:24-0500",
+  "timestamp": "2026-11-07T21:57:25-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-6/NQ_family_greeks_hedge_desktop.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:29-0500",
+  "timestamp": "2026-11-07T21:57:30-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-6/NQ_family_pricing_vol_desktop.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:30-0500",
+  "timestamp": "2026-11-07T21:57:31-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-6/NQ_family_greeks_hedge_mobile.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:33-0500",
+  "timestamp": "2026-11-07T21:57:33-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-6/NQ_family_pricing_vol_mobile.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:33-0500",
+  "timestamp": "2026-11-07T21:57:34-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-6/SPX_multibook_main_keylevels_desktop.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:37-0500",
+  "timestamp": "2026-11-07T21:57:37-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-6/SPX_multibook_main_keylevels_mobile.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:41-0500",
+  "timestamp": "2026-11-07T21:57:40-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-8/NQ_family_sidebar_xbook_desktop.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:52-0500",
+  "timestamp": "2026-11-07T21:57:50-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-8/NQ_family_alertbar_main_desktop.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:54-0500",
+  "timestamp": "2026-11-07T21:57:51-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-8/NQ_family_sidebar_xbook_mobile.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:57-0500",
+  "timestamp": "2026-11-07T21:57:54-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-8/NQ_family_alertbar_main_mobile.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T22:48:58-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-10/VIX_volatility_section_desktop.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T22:49:43-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-10/VIX_volatility_section_mobile.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T22:49:47-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-12/pricing_analysis_desktop.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T22:49:53-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-12/pricing_analysis_mobile.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T22:49:57-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-7/NQ_family_model_card_desktop.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T22:51:09-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-7/NQ_family_pca2d_grouped_arrows_desktop.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T22:51:11-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-7/NQ_family_model_card_mobile.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T22:51:14-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-7/NQ_family_pca2d_grouped_arrows_mobile.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T22:51:15-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-13/chart_factors_top_desktop.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T23:14:09-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-13/chart_factors_sections_desktop.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T23:14:09-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-13/chart_factors_top_desktop2x.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T23:14:32-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-13/chart_factors_sections_desktop2x.png",
-  "commit": "no-git",
-  "timestamp": "2026-11-04T23:14:33-0500",
+  "timestamp": "2026-11-07T21:57:56-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-5/SPX_single_pca2d_layout_desktop.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T23:14:37-0500",
+  "timestamp": "2026-11-07T21:58:14-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-5/SPX_single_tsne2d_layout_desktop.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T23:14:39-0500",
+  "timestamp": "2026-11-07T21:58:16-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-5/SPX_single_pca2d_layout_mobile.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T23:14:44-0500",
+  "timestamp": "2026-11-07T21:58:20-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-5/SPX_single_tsne2d_layout_mobile.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T23:14:46-0500",
+  "timestamp": "2026-11-07T21:58:22-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-3/SPX_single_pca2d_controls_desktop.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T23:14:51-0500",
+  "timestamp": "2026-11-07T21:58:27-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-3/SPX_single_tsne2d_confidence_desktop.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T23:14:53-0500",
+  "timestamp": "2026-11-07T21:58:29-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-3/SPX_single_pca2d_controls_mobile.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T23:14:57-0500",
+  "timestamp": "2026-11-07T21:58:33-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-3/SPX_single_tsne2d_confidence_mobile.png",
   "commit": "no-git",
-  "timestamp": "2026-11-04T23:14:59-0500",
+  "timestamp": "2026-11-07T21:58:35-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-10/VIX_volatility_section_desktop.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-07T21:58:38-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-10/VIX_volatility_section_mobile.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-07T21:58:41-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-12/pricing_analysis_desktop.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-07T21:58:47-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-12/pricing_analysis_mobile.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-07T21:58:51-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-7/NQ_family_model_card_desktop.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-07T22:00:00-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-7/NQ_family_pca2d_grouped_arrows_desktop.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-07T22:00:01-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-7/NQ_family_model_card_mobile.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-07T22:00:04-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-7/NQ_family_pca2d_grouped_arrows_mobile.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-07T22:00:05-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-13/chart_factors_top_desktop.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-07T22:02:57-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-13/chart_factors_sections_desktop.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-07T22:02:57-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-13/chart_factors_top_desktop2x.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-07T22:03:19-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-13/chart_factors_sections_desktop2x.png",
+  "commit": "no-git",
+  "timestamp": "2026-11-07T22:03:20-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  }
