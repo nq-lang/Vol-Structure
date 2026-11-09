@@ -55,59 +55,7 @@
     const short = l => l.replace('Gamma ', '').replace(' Wall', 'W').replace('Exp Move ', 'EM ').replace('Near Move ', 'NM ').replace('25D ', '25D ');
     function repaintPanels() { const pp = L.panelApi('pricing'), gp = L.panelApi('greeks');
         if (window.__panels) Object.entries(window.__panels).forEach(([ch, p]) => p.panel && p.panel.setLens && p.panel.setLens(GREEK.includes(ch) ? gp : pp)); }
-    // ---- T2-5 / T2-6 blocks. Hedge Flows (Greeks page): aggregate dealer re-hedge flow in anchor-equivalent contracts. Vol & Risk (Pricing page): per picked book.
-    const sgn = v => (v > 0 ? '+' : '') + v.toLocaleString('en-US', { maximumFractionDigits: 0 });
     const cls = v => v > 0 ? 'pos' : v < 0 ? 'neg' : '';
-    // ---- B2 Hedge Flow: every row states trigger, price, time, flow (with sign + reference) and the effect on the ticker; observed vs projected are labelled
-    function hedgeBlock() {
-        const h = L.mb && L.mb.hedge; if (!h) return '<div class="vt-lens-sec"><h4>Hedge Flow</h4><div class="vt-lens-empty">Unavailable &mdash; no index-convertible books in scope.</div></div>';
-        const an = L.lens.anchor, S = L.mb.session, P = scopeNow().ticker, fam = famMode();
-        const spot = fam ? L.lens.anchor_px : (P === an ? L.lens.anchor_px : (book(P) || {}).spot), tk = fam ? L.lens.tick : 0.01, tgt = fam ? an : disp(P);
-        const px = v => v == null ? 'n/a' : '$' + fmt(v, tk), sg = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 }), usd = v => (v < 0 ? '−' : '+') + '$' + (Math.abs(v) / 1e6).toFixed(1) + 'M';
-        const bs = v => v > 0 ? 'BUY' : v < 0 ? 'SELL' : 'flat', c0 = v => v > 0 ? 'pos' : v < 0 ? 'neg' : '';
-        const maxAbs = Math.max(1, ...h.anchor_contracts.map(Math.abs));
-        const rows = [];   // {st: 'observed'|'projected', trig, price, when, flow, usd, meaning, effect}
-        if (S && S.ok) (S.observed || []).forEach(o => rows.push({ st: 'observed', trig: o.window + ': price ' + (o.move_pct >= 0 ? '+' : '−') + Math.abs(o.move_pct).toFixed(2) + '%', price: spot ? px(spot / (1 + o.move_pct / 100)) + ' → ' + px(spot) : (o.move_pct >= 0 ? '+' : '') + o.move_pct.toFixed(2) + '%', when: o.from + ' → ' + o.to + ' ET (already happened)',
-            flow: o.flow_c, usd: o.flow_notional, meaning: 'Change in the dealers’ net hedge over the window (price, time and vol effects combined). Dealers ' + bs(o.flow_c) + ' = they bought/sold the underlying.', effect: o.reading }));
-        h.shock_pct.forEach((s, i) => { if (s === 0) return; const f = h.anchor_contracts[i], n = h.notional[i], same = (f > 0) === (s > 0), rel = Math.abs(f) / maxAbs, spd = rel >= 0.66 ? 'sharp' : rel >= 0.33 ? 'firm' : 'mild';
-            rows.push({ st: 'projected', trig: tgt + ' moves ' + (s > 0 ? '+' : '') + s + '% from ' + px(spot), price: spot ? px(spot * (1 + s / 100)) : 'n/a', when: 'Immediately, as price trades there (re-hedged at that level)', flow: f, usd: n,
-                meaning: 'Dealers would ' + bs(f) + ' ' + Math.abs(Math.round(f)).toLocaleString() + ' ' + an + '-equivalent contracts (' + usd(n) + ') to stay delta-neutral after a ' + s + '% move. + = dealers buy, − = dealers sell.',
-                effect: (same ? 'AMPLIFIES: dealers ' + bs(f).toLowerCase() + ' into a ' + (s > 0 ? 'rise' : 'fall') + ', so the move tends to accelerate' : 'DAMPS: dealers ' + bs(f).toLowerCase() + ' into a ' + (s > 0 ? 'rise' : 'fall') + ', so the move tends to stall / revert') + ' (' + spd + ' vs the rest of this ladder).' }); });
-        const vr = window.VT_VOL ? VT_VOL.regimeFor(an) : null, vtxt = vr && vr.available ? vr.id + ' ' + (vr.trend > 0 ? 'rising' : vr.trend < 0 ? 'falling' : 'flat') + (vr.regime !== 'unknown' ? ', ' + vr.regime : '') : (vr && vr.id ? vr.id + ' unavailable' : 'vol index unavailable');
-        [['up', h.vanna_up_c, '+1'], ['dn', h.vanna_dn_c, '−1']].forEach(a => { const live = vr && vr.available && ((a[0] === 'up' && vr.trend > 0) || (a[0] === 'dn' && vr.trend < 0));
-            rows.push({ st: 'projected', trig: 'Implied vol ' + a[2] + ' vol pt (' + vtxt + ')', price: 'unchanged (' + px(spot) + ')', when: 'While vol re-prices; ' + (live ? 'this is the live direction' : 'only if vol moves this way'), flow: a[1], usd: null,
-                meaning: 'Vanna: dealers would ' + bs(a[1]) + ' ' + Math.abs(Math.round(a[1])).toLocaleString() + ' contracts per ' + a[2] + ' vol pt with price unchanged.', effect: (a[1] > 0 ? 'Supports price' : 'Pressures price') + ' if vol moves ' + (a[0] === 'up' ? 'up' : 'down') + '; ' + (live ? 'vol is currently moving this way.' : 'not the current vol direction.') }); });
-        const ccl = S && S.ok && S.pts.length ? S.pts[S.pts.length - 1].charm_close : null, tc = S && S.ok ? S.to_close_min : -1;
-        if (ccl != null) rows.push({ st: 'projected', trig: 'Time passes to the 16:00 close (0DTE decay)', price: 'unchanged', when: tc >= 0 ? 'Over the next ' + (tc >= 90 ? (tc / 60).toFixed(1) + ' h' : tc + ' min') + ', fastest late in the session' : 'n/a (market closed)', flow: ccl, usd: null, meaning: 'Charm: dealers ' + bs(ccl) + ' ' + Math.abs(Math.round(ccl)).toLocaleString() + ' contracts to re-balance from time alone.', effect: 'Drift ' + (ccl > 0 ? 'UP' : 'DOWN') + ' into the close with no price move needed; ' + (S.closing || '') });
-        rows.push({ st: 'projected', trig: 'One day of time decay (all expiries)', price: 'unchanged', when: 'Over the next trading day', flow: h.charm_1d_c, usd: null, meaning: 'Charm per day: dealers ' + bs(h.charm_1d_c) + ' ' + Math.abs(Math.round(h.charm_1d_c)).toLocaleString() + ' contracts.', effect: 'Background ' + (h.charm_1d_c > 0 ? 'buying' : 'selling') + ' pressure from time alone.' });
-        [['+1%', h.zero_dte_up_c], ['−1%', h.zero_dte_dn_c]].forEach(a => rows.push({ st: 'projected', trig: '0DTE only: ' + tgt + ' ' + a[0], price: spot ? px(spot * (1 + (a[0] === '+1%' ? 0.01 : -0.01))) : 'n/a', when: 'Today only; gone at expiry', flow: a[1], usd: null, meaning: 'Hedge flow from contracts expiring today: dealers ' + bs(a[1]) + ' ' + Math.abs(Math.round(a[1])).toLocaleString() + ' contracts.', effect: ((a[1] > 0) === (a[0] === '+1%') ? 'Amplifies' : 'Damps') + ' the move while 0DTE is live; the effect disappears at the close.' }));
-        const up = h.anchor_contracts[h.shock_pct.indexOf(1)], dn = h.anchor_contracts[h.shock_pct.indexOf(-1)];
-        let sum = '';
-        if (up != null && dn != null) { const amp = up > 0 && dn < 0, damp = up < 0 && dn > 0;
-            sum = (amp ? 'Dealer hedging currently AMPLIFIES moves: they buy ' + Math.abs(Math.round(up)).toLocaleString() + ' ' + an + ' contracts on a +1% move (' + px(spot * 1.01) + ') and sell ' + Math.abs(Math.round(dn)).toLocaleString() + ' on a −1% move (' + px(spot * 0.99) + '), so breaks tend to extend.' :
-                damp ? 'Dealer hedging currently DAMPS moves: they sell ' + Math.abs(Math.round(up)).toLocaleString() + ' ' + an + ' contracts on a +1% move (' + px(spot * 1.01) + ') and buy ' + Math.abs(Math.round(dn)).toLocaleString() + ' on a −1% move (' + px(spot * 0.99) + '), so price tends to pin.' :
-                'Dealer hedging is ASYMMETRIC: ' + bs(up).toLowerCase() + ' ' + Math.abs(Math.round(up)).toLocaleString() + ' on +1% (' + px(spot * 1.01) + ') but ' + bs(dn).toLowerCase() + ' ' + Math.abs(Math.round(dn)).toLocaleString() + ' on −1% (' + px(spot * 0.99) + ').');
-            if (ccl != null) sum += ' Time alone pushes ' + (ccl > 0 ? 'buying' : 'selling') + ' of ' + Math.abs(Math.round(ccl)).toLocaleString() + ' contracts into the close' + (tc >= 0 ? ' (' + tc + ' min left)' : '') + '.';
-            const o0 = S && S.ok && S.observed && S.observed[0]; if (o0) sum += ' So far: ' + o0.reading; else sum += ' Observed flow unavailable: ' + (S ? S.reason || 'no history yet' : 'no session history recorded') + '.'; }
-        const key = '<div class="vt-hedge-key"><span class="pos">+ dealers BUY (green)</span> <span class="neg">− dealers SELL (red)</span> &middot; <b>Observed</b> = already happened, <b>Projected</b> = expected if the trigger occurs &middot; flow in ' + an + '-equivalent contracts (full Black-Scholes revaluation) &middot; dealers assumed long calls / short puts (not observed)</div>';
-        const tr = rows.map(r => '<tr class="' + r.st + '"><td><span class="st ' + r.st + '">' + (r.st === 'observed' ? 'Observed' : 'Projected') + '</span></td><td>' + esc(r.trig) + '</td><td>' + esc(r.price) + '</td><td>' + esc(r.when) + '</td><td class="' + c0(r.flow) + '">' + bs(r.flow) + ' ' + sg(Math.abs(r.flow)).replace('+', '') + (r.usd != null && isFinite(r.usd) ? '<br><small>' + usd(r.usd) + '</small>' : '') + '</td><td>' + esc(r.meaning) + '</td><td>' + esc(r.effect) + '</td></tr>').join('');
-        const pb = h.per_book.map(b => '<span class="vt-lens-ex" title="share of |dollar gamma| / open interest expiring today">' + disp(b.id) + ' 0DTE ' + Math.round(b.zero_dte_gamma_share * 100) + '% &gamma; / ' + Math.round(b.zero_dte_oi_share * 100) + '% OI</span>').join('');
-        return '<div class="vt-lens-sec"><h4>Hedge Flow <small>' + h.books + ' book' + (h.books > 1 ? 's' : '') + (S && S.ok ? ' &middot; as of ' + esc(S.as_of) : '') + '</small></h4><div class="vt-hedge-sum">' + esc(sum) + '</div>' + volLine() + key +
-            '<div class="vt-hedge-w"><table class="vt-hedge vt-hedge-t"><thead><tr><th title="Observed = already happened; Projected = expected if the trigger occurs">Status</th><th title="What causes the flow">Trigger</th><th title="Price at which the flow takes effect">Price</th><th title="When it takes effect">When</th><th title="Dealer buy/sell size in anchor-equivalent contracts and dollars">Dealer flow</th><th title="What the number measures, its unit, and the sign convention">What it measures</th><th title="Expected effect on the ticker and its price fluctuation">Effect on price</th></tr></thead><tbody>' + tr + '</tbody></table></div><div class="vt-lens-chips">' + pb + '</div></div>';
-    }
-    // C-3: the shared VIX/VXN reading (same object the sidebar and Pricing use) as it bears on dealer hedging
-    function volLine() { const v = L.mb && L.mb.volctx; if (!v) return '';
-        if (!v.ok) return '<div class="vt-hedge-vol na"><b>Vol regime:</b> unavailable &mdash; ' + esc(v.reason) + '.</div>';
-        return '<div class="vt-hedge-vol"><b>' + esc(v.headline) + '.</b> ' + esc(v.hedge) + (v.divergence ? ' <i>' + esc(v.divergence) + '</i>' : '') + '</div>'; }
-    function volBlock() {
-        const rows = [...L.picked].map(id => book(id)).filter(b => b && b.vol).map(b => { const v = b.vol, pct = x => (x * 100).toFixed(1);
-            const spark = v.term.map(t => t.dte + 'd ' + pct(t.iv)).join(' &rsaquo; ');
-            const big = v.scen.filter(x => x[1] === 0).map(x => '<td class="' + cls(x[2]) + '">' + sgn(x[2] / 1e6) + '</td>').join('');
-            return '<div class="vt-lens-vr"><b style="color:' + color(b.id) + '">' + disp(b.id) + '</b> <span class="' + (v.backwardated ? 'neg' : '') + '">' + (v.backwardated ? 'BACKWARDATED' : 'contango') + ' ' + (v.slope * 100).toFixed(1) + ' vol/&radic;yr</span> &middot; term ' + spark +
-                ' &middot; 25&Delta; RR ' + pct(v.rr25) + ' &middot; put wing +' + pct(v.put_wing) + ' &middot; 1d move &plusmn;' + (v.em_1d * 100).toFixed(2) + '%' + (v.vrp != null ? ' &middot; VRP ' + pct(v.vrp) + ' (RV ' + pct(v.rv) + ')' : ' &middot; VRP n/a (no realized vol)') + (v.em_ratio != null ? ' &middot; realized/priced ' + v.em_ratio.toFixed(2) + 'x' : '') +
-                ' &middot; |&gamma;| top-3 strikes ' + Math.round(v.top3 * 100) + '% (HHI ' + v.hhi.toFixed(2) + ')<table class="vt-hedge"><thead><tr><th>dealer MTM $M @ spot</th><th>&minus;2%</th><th>&minus;1%</th><th>0</th><th>+1%</th><th>+2%</th></tr></thead><tbody><tr><td>IV flat</td>' + big + '</tr></tbody></table></div>'; }).join('');
-        return '<div class="vt-lens-sec"><h4>Vol &amp; risk <small>measurements, not forecasts</small></h4>' + (rows || '<div class="vt-lens-empty">pick a book</div>') + '</div>';
-    }
     // ---- B1-6/B1-7: Intraday / Swinging tabs + strike insight cards (all numbers and sentences come from the C++ strike_insight core)
     const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const ex = v => v == null ? 'n/a' : (v < 0 ? '−' : '+') + (Math.abs(v) >= 1e9 ? (Math.abs(v) / 1e9).toFixed(2) + 'B' : Math.abs(v) >= 1e6 ? (Math.abs(v) / 1e6).toFixed(1) + 'M' : Math.abs(v) >= 1e3 ? (Math.abs(v) / 1e3).toFixed(0) + 'K' : Math.abs(v).toFixed(0));
@@ -123,79 +71,128 @@
     }
     function axisPx(id, k) { const b = book(id); if (!b) return null; if (famMode()) return L.toFut(id, k); const P = scopeNow().ticker; if (id === P) return k; const F = L.toFut(id, k); return F == null ? null : L.fromFut(P, F); }
     L.axisPx = axisPx;
-    function cardHtml(id, c, i) {
-        const vcls = VCLS[c.verdict] || '', votes = c.votes.map(v => '<tr><td>' + esc(v.greek) + '</td><td class="v' + (v.v > 0 ? ' pos' : v.v < 0 ? ' neg' : '') + '">' + (v.v > 0 ? 'agrees' : v.v < 0 ? 'conflicts' : 'no vote') + '</td><td>' + esc(v.text) + '</td></tr>').join('');
-        const greeks = '<table class="vt-ic-g"><thead><tr><th>Gamma $/1%</th><th>Vanna sh/+1 vol pt</th><th>Charm sh/day</th><th>Charm to close</th><th>Vomma $/+1 vol pt</th><th>Color $/1% per ' + (L.hz === 'intraday' ? 'hour' : 'day') + '</th></tr></thead><tbody><tr><td class="' + (c.gamma > 0 ? 'pos' : 'neg') + '">' + ex(c.gamma) + '</td><td>' + shs(c.vanna_up) + ' up / ' + shs(c.vanna_dn) + ' down</td><td class="' + (c.charm_day > 0 ? 'pos' : 'neg') + '">' + shs(c.charm_day) + '</td><td>' + (c.charm_close == null ? 'n/a (market closed)' : shs(c.charm_close)) + '</td><td>' + ex(c.vomma) + '</td><td class="' + (c.color > 0 ? 'pos' : 'neg') + '">' + ex(c.color) + '</td></tr></tbody></table>';
-        const pct = v => Math.round(v * 100) + '%', pb = c.pb;
-        const g2 = '<table class="vt-ic-g"><thead><tr><th>Delta hedge</th><th>Vega $/vol pt</th><th>Theta $/day</th><th>Speed $/1% per +1% move</th><th>IV at strike</th><th>Distance</th><th>P(finish beyond)</th><th>P(touch)</th><th>Gamma share</th></tr></thead><tbody><tr><td>' + shs(c.delta_sh) + ' sh</td><td>' + ex(c.vega) + '</td><td class="' + (c.theta > 0 ? 'pos' : 'neg') + '">' + ex(c.theta) + '</td><td class="' + (c.speed > 0 ? 'pos' : 'neg') + '">' + ex(c.speed) + '</td><td>' + (c.iv_k * 100).toFixed(1) + '% (' + (c.skew >= 0 ? '+' : '\u2212') + (Math.abs(c.skew) * 100).toFixed(1) + ' vs ATM)</td><td>' + c.sigma_dist.toFixed(2) + ' &sigma; (' + (c.dist_pct >= 0 ? '+' : '') + c.dist_pct.toFixed(2) + '%)</td><td>' + pct(c.p_beyond) + '</td><td>~' + pct(c.p_touch) + '</td><td>' + pct(c.gamma_share) + '</td></tr></tbody></table>';
-        const play = '<div class="vt-ic-pb"><div class="ph"><b>Trade playbook</b> <span class="vd2">' + esc(pb.style) + '</span> <span class="hp ' + (pb.potential === 'high' ? 'pos' : pb.potential.indexOf('low') === 0 ? 'neg' : '') + '">hold potential: ' + esc(pb.potential) + '</span></div>' +
-            '<table class="vt-ic-v"><tbody><tr><td>Entry</td><td>' + esc(pb.entry) + '</td></tr><tr><td>Stop</td><td>' + esc(pb.stop) + '</td></tr><tr><td>Target</td><td>' + esc(pb.target) + '</td></tr><tr><td>Holding</td><td>' + esc(pb.hold) + '</td></tr><tr><td>Reaction speed</td><td>' + esc(pb.speed) + '</td></tr></tbody></table>' +
-            '<ul class="edge">' + pb.edge.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul><small>Derived from the Greek profile and the risk-neutral distribution; a framing of how the level tends to trade, not a trade signal.</small></div>';
-        return '<details data-sk="' + (axisPx(id, c.strike) ?? '') + '" class="vt-ic ' + vcls + (c.contested ? ' contested' : '') + '"' + (i < 2 ? ' open' : '') + '><summary><b class="k" style="border-left:3px solid ' + color(id) + '">' + esc(strikeLabel(id, c.strike)) + '</b><span class="x ' + (c.gamma > 0 ? 'pos' : 'neg') + '">' + ex(c.gamma) + '/1%</span><span class="vd">' + esc(c.verdict) + (c.contested ? ' (contested)' : '') + '</span><span class="pbs">' + esc(c.pb.style.split(':')[0]) + ' &middot; hold ' + esc(c.pb.potential.split(' ')[0]) + '</span><span class="cv">conviction ' + esc(c.conviction.split(':')[0]) + '</span><span class="dt">valid until ' + esc(c.valid_until) + '</span></summary>' +
-            '<div class="vt-ic-b"><p class="m">' + esc(c.mechanism) + '</p><p><b>On approach:</b> ' + esc(c.approach) + ' <b>On breach:</b> ' + esc(c.breach) + '</p>' + greeks + g2 + play +
-            '<table class="vt-ic-v"><thead><tr><th>Greek</th><th>vs verdict</th><th>Reading</th></tr></thead><tbody>' + votes + '</tbody></table>' +
-            '<p><b>Valid:</b> from ' + esc(c.as_of) + ' until ' + esc(c.valid_until) + ' <small>(limited by ' + esc(c.valid_limit) + ')</small></p>' +
-            '<div class="vt-ic-i"><b>Invalidated by:</b><ul>' + c.invalidation.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul></div>' +
-            '<p class="rg"><b>Regime:</b> ' + esc(c.regime) + '</p><p class="cf"><b>Conviction:</b> ' + esc(c.conviction) + ' &middot; <b>data confidence:</b> ' + esc(c.confidence) + ' &middot; as of ' + esc(c.as_of) + '</p></div></details>';
+    // ---- Hedge Flow: live-state table (Dealer flow | Price | Status | When | Dealer) followed by ONE merged "what it measures / effect on price" reference table.
+    //      No header prose: the block starts with data. All numbers come from the multibook `hedge` / `session` payloads.
+    function hedgeBlock() {
+        const h = L.mb && L.mb.hedge; if (!h) return '<div class="vt-lens-empty">Hedge flow unavailable &mdash; no index-convertible books in scope.</div>';
+        const an = L.lens.anchor, S = L.mb.session, P = scopeNow().ticker, fam = famMode();
+        const spot = fam ? L.lens.anchor_px : (P === an ? L.lens.anchor_px : (book(P) || {}).spot), tk = fam ? L.lens.tick : 0.01, tgt = fam ? an : disp(P);
+        const px = v => v == null ? 'n/a' : fmt(v, tk), usd = v => (v < 0 ? '−' : '+') + '$' + (Math.abs(v) / 1e6).toFixed(1) + 'M';
+        const sg = v => (v < 0 ? '−' : '+') + Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 });
+        const bs = v => v > 0 ? 'BUY' : v < 0 ? 'SELL' : 'FLAT', c0 = v => v > 0 ? 'pos' : v < 0 ? 'neg' : '';
+        const rows = [];
+        if (S && S.ok) (S.observed || []).forEach(o => rows.push({ st: 'Observed', lab: o.window + ' ' + (o.move_pct >= 0 ? '+' : '−') + Math.abs(o.move_pct).toFixed(2) + '%', price: spot ? px(spot / (1 + o.move_pct / 100)) + ' → ' + px(spot) : '–', when: o.from + '–' + o.to + ' ET', d: o.flow_c, usd: o.flow_notional }));
+        h.shock_pct.forEach((s, i) => { if (s === 0) return; rows.push({ st: 'Projected', lab: tgt + ' ' + (s > 0 ? '+' : '') + s + '%', price: spot ? px(spot * (1 + s / 100)) : 'n/a', when: 'at price', d: h.anchor_contracts[i], usd: h.notional[i] }); });
+        const vr = window.VT_VOL ? VT_VOL.regimeFor(an) : null;
+        [['up', h.vanna_up_c, '+1'], ['dn', h.vanna_dn_c, '−1']].forEach(a => { const live = vr && vr.available && ((a[0] === 'up' && vr.trend > 0) || (a[0] === 'dn' && vr.trend < 0));
+            rows.push({ st: live ? 'Live' : 'Projected', lab: 'IV ' + a[2] + ' pt', price: px(spot), when: live ? 'vol moving' : 'if vol moves', d: a[1], usd: null }); });
+        const ccl = S && S.ok && S.pts.length ? S.pts[S.pts.length - 1].charm_close : null, tc = S && S.ok ? S.to_close_min : -1;
+        if (ccl != null) rows.push({ st: 'Projected', lab: 'Charm to close', price: px(spot), when: tc >= 0 ? (tc >= 90 ? (tc / 60).toFixed(1) + ' h' : tc + ' min') : 'closed', d: ccl, usd: null });
+        rows.push({ st: 'Projected', lab: 'Charm 1 day', price: px(spot), when: '1 day', d: h.charm_1d_c, usd: null });
+        [['+1%', h.zero_dte_up_c], ['−1%', h.zero_dte_dn_c]].forEach(a => rows.push({ st: 'Projected', lab: '0DTE ' + a[0], price: spot ? px(spot * (1 + (a[0] === '+1%' ? 0.01 : -0.01))) : 'n/a', when: 'to expiry', d: a[1], usd: null }));
+        const live = rows.map(r => '<tr><td class="lb">' + esc(r.lab) + '</td><td class="n">' + esc(r.price) + '</td><td><span class="st ' + r.st.toLowerCase() + '">' + r.st + '</span></td><td>' + esc(r.when) + '</td><td class="n ' + c0(r.d) + '">' + bs(r.d) + ' ' + sg(r.d).slice(1) + (r.usd != null && isFinite(r.usd) ? ' <small>' + usd(r.usd) + '</small>' : '') + '</td></tr>').join('');
+        const f1 = i => h.anchor_contracts[h.shock_pct.indexOf(i)], up = f1(1), dn = f1(-1), amp = up > 0 && dn < 0, damp = up < 0 && dn > 0, ob = S && S.ok && S.observed && S.observed[0];
+        const ref = [['Price shock', 'Dealer re-hedge after a price move', amp ? 'AMPLIFIES: dealers chase' : damp ? 'DAMPS: dealers fade' : 'Asymmetric: ' + bs(up) + ' on +1%, ' + bs(dn) + ' on −1%', amp ? 'neg' : damp ? 'pos' : ''],
+            ['Vanna', 'Hedge change per vol point, price flat', (h.vanna_up_c > 0 ? 'Vol up: supports' : 'Vol up: pressures') + ' · ' + (h.vanna_dn_c > 0 ? 'vol down: supports' : 'vol down: pressures'), ''],
+            ['Charm', 'Hedge change from time alone', ccl != null ? 'Drift ' + (ccl > 0 ? 'UP' : 'DOWN') + ' into close' : (h.charm_1d_c > 0 ? 'Background buying' : 'Background selling'), c0(ccl != null ? ccl : h.charm_1d_c)],
+            ['0DTE', 'Same-day expiry hedge', 'Fades at the close', ''],
+            ['Observed', 'Realised hedge change in window', ob ? (ob.flow_c > 0 ? 'Net buying so far' : 'Net selling so far') : 'No history yet', ob ? c0(ob.flow_c) : '']]
+            .map(r => '<tr><td class="lb">' + r[0] + '</td><td>' + esc(r[1]) + '</td><td class="' + r[3] + '">' + esc(r[2]) + '</td></tr>').join('');
+        return '<div class="vt-hedge-w"><table class="vt-hedge vt-hedge-t vt-compact"><thead><tr><th>Dealer flow</th><th class="n">Price</th><th>Status</th><th>When</th><th class="n">Dealer</th></tr></thead><tbody>' + live + '</tbody></table>' +
+            '<table class="vt-hedge vt-hedge-ref vt-compact"><thead><tr><th>Flow</th><th>What it measures</th><th>Effect on price</th></tr></thead><tbody>' + ref + '</tbody></table></div>';
     }
-    function insightBlock() {
+    // ---- Entry approach vocabulary (shared by the level cards and the pricing thesis table). Pure function of the card numbers + horizon.
+    L.approach = function (c, hz, netG, spot, nextStrike) {
+        const lvl = fmt(c.strike, 0.01), side = c.strike >= spot ? 'above' : 'below', x25 = fmt(Math.abs(c.pb && c.pb.entry_px != null && c.pb.stop_px != null ? c.pb.stop_px - c.pb.entry_px : 0), 0.01);
+        const neg = c.gamma < 0, v = c.verdict, swing = hz === 'swinging', near = nextStrike != null ? fmt(nextStrike, 0.01) : null;
+        let key, name, trig, why;
+        if (v === 'Acceleration' || (neg && v !== 'Pivot')) {
+            if (!swing) { key = 'momentum'; name = 'Momentum continuation, then retest'; trig = 'Let price break ' + lvl + ' and extend; enter on the retest of ' + lvl + (near ? ' or the nearer ' + near : '') + ' holding'; }
+            else { key = 'retest'; name = 'Break & retest'; trig = 'Close beyond ' + lvl + ' (±' + x25 + '), then retest ' + lvl + ' and hold → enter'; }
+            why = 'Short gamma at ' + lvl + ': dealers sell dips / buy rallies, so breaks extend; do not fade.';
+        } else if (v === 'Pivot') { key = 'retest'; name = 'Break & retest'; trig = 'Wait for a close beyond ' + lvl + ', then retest and hold → enter with the break'; why = 'Gamma sign flips at ' + lvl + ': direction needs confirmation, first touch is a coin-flip.'; }
+        else if (v === 'Magnet') {
+            if (!swing && c.p_touch >= 0.5) { key = 'immediate'; name = 'Enter on first touch'; trig = 'Enter on the first reaction at ' + lvl + ' (' + Math.round(c.p_touch * 100) + '% touch odds)'; why = 'Positive gamma pulls price toward ' + lvl + ' and damps moves once there.'; }
+            else { key = 'scale'; name = 'Scale in across the zone'; trig = 'Add on each reaction within ±' + x25 + ' of ' + lvl; why = 'Pinning ' + (swing ? 'persists until its expiry rolls off' : 'strength builds into the close') + '; no single entry price.'; }
+        } else if (v === 'Support' || v === 'Resistance') {
+            if (!swing) { key = 'immediate'; name = 'Enter on first touch'; trig = 'Fade the first touch of ' + lvl + ' (stop ' + fmt(c.pb && c.pb.stop_px, 0.01) + ')'; why = 'Long gamma at ' + lvl + ': dealers ' + (side === 'above' ? 'sell rallies' : 'buy dips') + ', so the first touch tends to revert.'; }
+            else if (c.gamma_share >= 0.25) { key = 'scale'; name = 'Scale in across the zone'; trig = 'Add on each reaction within ±' + x25 + ' of ' + lvl; why = 'Large share of multi-day gamma (' + Math.round(c.gamma_share * 100) + '%): a durable ' + v.toLowerCase() + ', not a one-touch level.'; }
+            else { key = 'retest'; name = 'Break & retest'; trig = 'Enter only after a retest of ' + lvl + ' holds on the far side'; why = 'Small share of multi-day gamma (' + Math.round(c.gamma_share * 100) + '%): the level can give way, so wait for confirmation.'; }
+        } else { key = 'fade'; name = 'Fade first touch only if momentum is exhausted'; trig = 'Fade ' + lvl + ' only after two failed pushes; otherwise stand aside'; why = 'Weak gamma at ' + lvl + ' (' + Math.round((c.gamma_share || 0) * 100) + '% share): little hedging force either way.'; }
+        return { key, name, trig, why };
+    };
+    // ---- level card: Valid until -> Distance / P(touch) / Fed by -> Invalidated by -> Entry playbook
+    function fedBy(c, H) {
+        const g = c.votes.filter(v => v.v > 0).map(v => v.greek).filter((x, i, a) => a.indexOf(x) === i), ex2 = (H.expiries || []).map(e => e.dte + 'D ' + Math.round((e.gamma_share || 0) * 100) + '%').join(' · ');
+        return '<b>' + esc((g.length ? g.join(' + ') : 'Gamma')) + '</b> <span class="mut">' + esc(ex2) + '</span>'; }
+    function cardHtml(id, c, i, hz, H, I, next) {
+        const vcls = VCLS[c.verdict] || '', ap = L.approach(c, hz, H.net_gamma, I.spot, next), pb = c.pb, spot = I.spot, pts = c.strike - spot, pct = x => Math.round(x * 100) + '%';
+        const sg1 = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2);
+        return '<details data-k="' + hz + c.strike + '" data-sk="' + (axisPx(id, c.strike) ?? '') + '" class="vt-lc ' + vcls + (c.contested ? ' contested' : '') + '"' + (i < 2 ? ' open' : '') + '><summary><b class="k" style="border-left:3px solid ' + color(id) + '">' + esc(strikeLabel(id, c.strike)) + '</b><span class="vd">' + esc(c.verdict) + (c.contested ? ' (contested)' : '') + '</span></summary>' +
+            '<div class="vt-lc-b"><div class="vt-lc-v">Valid until <b>' + esc(c.valid_until) + '</b></div>' +
+            '<div class="vt-lc-k"><span><i>Distance</i><b class="n">' + sg1(pts) + ' pts &middot; ' + sg1(c.dist_pct) + '%</b></span><span><i>P(touch)</i><b class="n">' + pct(c.p_touch) + '</b></span><span class="fb"><i>Fed by</i>' + fedBy(c, H) + '</span></div>' +
+            '<div class="vt-lc-i"><i>Invalidated by</i><ul>' + c.invalidation.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul></div>' +
+            '<table class="vt-lc-pb"><tbody><tr class="ap"><th>Approach</th><td>' + esc(ap.name) + '</td></tr><tr><th>Trigger</th><td>' + esc(ap.trig) + '</td></tr><tr><th>Stop</th><td class="n">' + fmt(pb.stop_px, 0.01) + '</td></tr><tr><th>Target</th><td class="n">' + fmt(pb.target_px, 0.01) + ' &middot; ' + (pb.rr != null ? pb.rr.toFixed(1) + 'R' : '') + ' &middot; P ' + pct(pb.p_target) + '</td></tr><tr><th>Hold</th><td>' + esc(pb.hold) + '</td></tr></tbody></table>' +
+            '<div class="vt-lc-why">' + esc(ap.why) + '</div></div></details>';
+    }
+    function horizonCol(id, hz) {
+        const I = book(id).insight, H = I[hz], nm = hz === 'intraday' ? 'Intraday' : 'Swing';
+        const head = '<div class="vt-lc-h"><b>' + nm + '</b><span class="mut">' + (hz === 'intraday' ? '0–1 DTE' : 'multi-day') + '</span></div>';
+        if (!H.ok) return '<div class="vt-lc-col" data-hz="' + hz + '">' + head + '<div class="vt-lens-warn">Unavailable &mdash; ' + esc(H.reason) + '</div></div>';
+        const cs = H.cards, body = cs.length ? cs.map((c, i) => { const nx = cs.filter(o => o !== c && (c.strike > I.spot ? o.strike > c.strike : o.strike < c.strike)).sort((a, b) => Math.abs(a.strike - c.strike) - Math.abs(b.strike - c.strike))[0]; return cardHtml(id, c, i, hz, H, I, nx && nx.strike); }).join('') : '<div class="vt-lens-empty">No structural strike.</div>';
+        return '<div class="vt-lc-col" data-hz="' + hz + '">' + head + body + '</div>';
+    }
+    function cardsBlock() {
         const ids = [...L.picked].filter(id => { const b = book(id); return b && b.insight; });
-        const tabs = '<div class="vt-lens-hz" role="tablist">' + [['intraday', 'Intraday'], ['swinging', 'Swinging']].map(t => '<button role="tab" data-hz="' + t[0] + '" class="' + (L.hz === t[0] ? 'on' : '') + '">' + t[1] + '</button>').join('') + '</div>';
-        if (!ids.length) return '<div class="vt-lens-sec"><h4>Strike insight</h4>' + tabs + '<div class="vt-lens-empty">Pick a book above to see its strike analysis.</div></div>';
-        const parts = ids.map(id => { const I = book(id).insight, H = I[L.hz];
-            const head = '<div class="vt-ic-h"><b style="color:' + color(id) + '">' + disp(id) + '</b> ' + (H.ok ? esc(H.headline) : '') + '</div>';
-            if (!H.ok) return head + '<div class="vt-lens-warn">' + L.hzName() + ' unavailable &mdash; ' + esc(H.reason) + '.</div>';
-            const src = '<div class="vt-ic-src">Fed by: ' + esc(H.expiries_text) + ' &middot; as of ' + esc(H.as_of) + ' &middot; ' + esc(H.assumption) + '</div>';
-            const rec = I.reconcile.length ? '<div class="vt-ic-rec"><b>Why the tabs differ:</b> ' + I.reconcile.map(esc).join(' ') + '</div>' : '';
-            return head + src + (H.cards.length ? H.cards.map((c, i) => cardHtml(id, c, i)).join('') : '<div class="vt-lens-empty">No strike carries enough gamma to be structural in this horizon.</div>') + rec; }).join('');
-        return '<div class="vt-lens-sec"><h4>Strike insight <small>' + (L.hz === 'intraday' ? '0-1 DTE: the current session' : 'further-dated: the coming days') + '</small></h4>' + tabs + parts + '<div class="vt-lens-note">Key: <span class="pos">+ stabilising / dealers buy</span> &middot; <span class="neg">&minus; amplifying / dealers sell</span>. Flows are revalued with full Black-Scholes; dealers assumed long calls / short puts.</div></div>';
+        if (!ids.length) return '<div class="vt-lens-empty">No book selected.</div>';
+        return ids.map(id => (ids.length > 1 ? '<div class="vt-lc-bk" style="color:' + color(id) + '">' + disp(id) + '</div>' : '') + '<div class="vt-lc-grid">' + horizonCol(id, 'intraday') + horizonCol(id, 'swinging') + '</div>').join('');
     }
     L.strikeLabel = strikeLabel;
-    L.hzName = () => L.hz === 'intraday' ? 'Intraday' : 'Swinging';
-    L.setHorizon = h => { if (h === 'intraday' || h === 'swinging') { L.hz = h; try { sessionStorage.setItem('vt_lens_hz', h); } catch (e) {} render(); } };
+    // ---- strike lens = index/ETF -> futures conversion list. Entries persist (storage) until the USER removes them; the futures level is recomputed on every refresh.
+    let _cid = 0, CK = 'vt_lens_conv'; L.conv = [];
+    try { const s = JSON.parse(localStorage.getItem(CK) || '[]'); if (Array.isArray(s)) L.conv = s.filter(e => e && e.id && isFinite(e.k)).map(e => ({ u: ++_cid, id: e.id, k: +e.k })); } catch (e) {}
+    const saveConv = () => { try { localStorage.setItem(CK, JSON.stringify(L.conv.map(e => ({ id: e.id, k: e.k })))); } catch (e) {} };
+    L.addConv = (id, k) => { k = +k; if (!id || !isFinite(k) || L.conv.some(e => e.id === id && e.k === k)) return false; L.conv.push({ u: ++_cid, id, k }); saveConv(); render(); return true; };
+    L.removeConv = u => { L.conv = L.conv.filter(e => e.u !== u); saveConv(); render(); };
+    // DTE + exposure context of an entered strike, from the strike-insight cards of its own book (nearest card within 0.4% of the strike)
+    function strikeCtx(id, k) {
+        const b = book(id), out = { ctx: '–', dte: '–', flag: '' }; if (!b) return out; let best = null;
+        if (b.insight) ['intraday', 'swinging'].forEach(hz => { const H = b.insight[hz]; if (!H || !H.ok) return; H.cards.forEach(c => { const d = Math.abs(c.strike - k); if (!best || d < best.d - 1e-9) best = { d, c, hz, H }; }); });
+        if (best && best.d / k <= 0.004) { const ex2 = best.H.expiries || [], lo = Math.min(...ex2.map(e => e.dte)), hi = Math.max(...ex2.map(e => e.dte));
+            out.ctx = 'GEX ' + ex(best.c.gamma) + ' ' + best.c.verdict; out.dte = lo === hi ? lo + 'D' : lo + '–' + hi + 'D'; out.flag = best.hz === 'intraday' ? 'INTRADAY' : 'SWING'; }
+        else { const lv = (b.levels || []).filter(l => l.label !== 'Top |GEX|').map(l => ({ l, d: Math.abs(l.strike - k) })).sort((a, c) => a.d - c.d)[0]; if (lv && lv.d / k <= 0.004) out.ctx = lv.l.label + (lv.l.value ? ' ' + fmtX(lv.l.value) : ''); }
+        return out;
+    }
+    function convRows() {
+        const A = L.lens.anchor, F0 = L.lens.anchor_px, tk = L.lens.tick;
+        if (!L.conv.length) return '<tr><td colspan="7" class="vt-lens-empty">Enter a strike to convert it to ' + A + '.</td></tr>';
+        return L.conv.map(e => { const b = book(e.id), F = b && b.convertible ? L.toFut(e.id, e.k) : null, d = F != null && F0 ? F - F0 : null, c = strikeCtx(e.id, e.k);
+            return '<tr data-u="' + e.u + '"><td class="lb"><i style="background:' + color(e.id) + '"></i>' + disp(e.id) + ' <b class="n">' + fmt(e.k, 0.01) + '</b></td><td class="n f">' + (F == null ? '–' : A + ' <b>' + fmt(F, tk) + '</b>') + '</td><td class="n ' + cls(d) + '">' + (d == null ? '–' : (d >= 0 ? '+' : '−') + fmt(Math.abs(d), tk)) + '</td><td class="n ' + cls(d) + '">' + (d == null ? '–' : (d >= 0 ? '+' : '−') + (Math.abs(d) / F0 * 100).toFixed(2) + '%') + '</td><td class="ctx">' + esc(c.ctx) + '</td><td class="n dte">' + esc(c.dte) + (c.flag ? ' <i class="fl ' + c.flag.toLowerCase() + '">' + c.flag + '</i>' : '') + '</td><td><button class="x" data-u="' + e.u + '" title="Remove" aria-label="Remove">&times;</button></td></tr>'; }).join('');
+    }
+    function buildShell(el) {
+        el.innerHTML = '<section class="vt-cf-sec" data-sec="lens"><div class="vt-lens-conv"><b class="t">Strike Lens</b><select id="vt-lens-cb" aria-label="Instrument"></select><input id="vt-lens-ck" type="number" step="any" placeholder="strike" inputmode="decimal" aria-label="Strike"><button id="vt-lens-add" type="button">Convert</button></div>' +
+            '<table class="vt-lens-t vt-compact"><thead><tr><th>Strike</th><th class="n">Futures</th><th class="n">Δ pts</th><th class="n">Δ %</th><th>Exposure</th><th class="n">DTE</th><th></th></tr></thead><tbody id="vt-lens-rows"></tbody></table></section>' +
+            '<section class="vt-cf-sec" data-sec="insights" hidden></section><section class="vt-cf-sec" data-sec="hedge" hidden></section>';
+        const add = () => { const id = el.querySelector('#vt-lens-cb').value, inp = el.querySelector('#vt-lens-ck'); if (L.addConv(id, parseFloat(inp.value))) { inp.value = ''; } };
+        el.querySelector('#vt-lens-add').addEventListener('click', add);
+        el.querySelector('#vt-lens-cb').addEventListener('change', ev => { L.customBook = ev.target.value; });
+        el.querySelector('#vt-lens-ck').addEventListener('keydown', ev => { if (ev.key === 'Enter') add(); });
+        el.querySelector('#vt-lens-rows').addEventListener('click', ev => { const x = ev.target.closest('button.x'); if (x) L.removeConv(+x.dataset.u); });
+    }
     function render() {
         const el = document.getElementById('vt-lens'); if (!el) return;
         const on = active(); el.hidden = !on; if (!on) { repaintPanels(); fire(); return; }
-        const lens = L.lens, sc = scopeNow(), mb = L.mb, view = L.view, fam = famMode(), P = sc.ticker;
+        const lens = L.lens, sc = scopeNow(), view = L.view, P = sc.ticker;
         if (!L.picked) { const own = book(P); const first = own && own.convertible ? own : lens.books.find(b => b.convertible); L.picked = new Set(first ? [first.id] : []); }
-        const wmap = {}; (mb && mb.books || []).forEach(b => wmap[b.id] = b);
-        const tgtName = fam ? lens.anchor : disp(P), tgtTick = fam ? lens.tick : null;
-        const chips = lens.books.map(b => '<button class="vt-lens-chip' + (L.picked.has(b.id) ? ' on' : '') + (b.convertible ? '' : ' na') + (b.id === P ? ' own' : '') + '" data-id="' + b.id + '" title="' + (b.note || '').replace(/"/g, '&quot;') + '"' + (b.convertible ? '' : ' disabled') +
-            ' style="--c:' + color(b.id) + '">' + disp(b.id) + (wmap[b.id] ? '<small>' + Math.round(wmap[b.id].weight * 100) + '%</small>' : '') + '</button>').join('');
-        const showFutCol = !fam && L.showFut;
-        const rows = []; for (const id of L.picked) { const b = book(id); if (b) levelsOf(b, view).forEach(lv => { const pv = L.primary(id, lv); if (pv != null) rows.push({ id, lv, pv, b }); }); }
-        rows.sort((a, c) => c.pv - a.pv);
-        const valCell = r => { const u = r.lv.value; if (view !== 'pricing') return '';
-            return r.lv.label.indexOf('RND') === 0 && r.lv.label !== 'RND Mode' ? Math.round(u * 100) + '%' : (r.lv.label.indexOf('25D') === 0 || r.lv.label === 'ATM') ? (u * 100).toFixed(1) + '% IV' : ''; };
-        const gv = view === 'greeks', eq = showEquiv() || [...L.picked].some(id => id !== P); // futures: labelled "equiv"; non-futures: only a plain "In <TICKER>" column when another book is picked (own-book rows would just repeat the strike)
-        const head = '<th>Level</th><th>Own strike</th>' + (eq ? '<th>' + (showEquiv() ? (fam ? lens.anchor : tgtName) + ' equiv' : 'In ' + tgtName) + '</th>' : '') + (gv ? '<th>Exposure</th>' : '') + (view === 'pricing' ? '<th>Read</th>' : '') + (showFutCol ? '<th>' + lens.anchor + ' equiv</th>' : '') + '<th>vs spot</th>';
-        const spotP = fam ? lens.anchor_px : (P === lens.anchor ? lens.anchor_px : (book(P) || {}).spot);
-        const tbl = rows.length ? '<table class="vt-lens-t"><thead><tr>' + head + '</tr></thead><tbody>' + rows.map(r => '<tr data-v="' + r.pv + '"><td><i style="background:' + color(r.id) + '" title="' + disp(r.id) + '"></i>' + r.lv.label + '</td><td>' + fmt(r.lv.strike) + '</td>' + (eq ? '<td class="f">' + fmt(r.pv, fam ? lens.tick : 0.01) + '</td>' : '') +
-            (gv ? '<td class="ex ' + (r.lv.value > 0 ? 'pos' : r.lv.value < 0 ? 'neg' : '') + '" style="border-left:2px solid ' + color(r.id) + '">' + (r.lv.value ? fmtX(r.lv.value) : '&ndash;') + '</td>' : '') +
-            (view === 'pricing' ? '<td>' + valCell(r) + '</td>' : '') + (showFutCol ? '<td>' + fmt(r.lv.fut, lens.tick) + '</td>' : '') +
-            '<td>' + (spotP ? ((r.pv - spotP) >= 0 ? '+' : '') + fmt(r.pv - spotP, fam ? lens.tick : 0.01) : '') + '</td></tr>').join('') + '</tbody></table>' : '<div class="vt-lens-empty">Pick a book above to highlight its levels.</div>';
-        const meta = [...L.picked].map(id => book(id)).filter(Boolean).map(b => '<div class="vt-lens-note"><b>' + disp(b.id) + '</b>' + (view === 'pricing' && b.atm_iv ? ' ATM IV ' + (b.atm_iv * 100).toFixed(1) + '% &middot; 1&sigma; move ' + (b.em_pct * 100).toFixed(2) + '% (' + b.ref_dte + 'd) &middot; 25&Delta; RR ' + (b.rr25 * 100).toFixed(1) + ' vol pts' : '') +
-            (b.id !== P || fam ? ' &middot; ratio ' + b.ratio.toFixed(4) + ', basis ' + b.basis.toFixed(2) + ' &mdash; ' + b.note : '') + '</div>').join('');
-        const futToggle = !fam ? '<label class="vt-lens-tg"><input type="checkbox" id="vt-lens-fut"' + (L.showFut ? ' checked' : '') + '> also show ' + lens.anchor + ' futures equivalent</label>' : '';
-        const cb = L.customBook && L.picked.has(L.customBook) ? L.customBook : [...L.picked][0];
-        const conv = '<div class="vt-lens-conv"><select id="vt-lens-cb">' + lens.books.filter(b => b.convertible).map(b => '<option value="' + b.id + '"' + (b.id === cb ? ' selected' : '') + '>' + disp(b.id) + '</option>').join('') + '</select>' +
-            '<input id="vt-lens-ck" type="number" step="any" placeholder="strike" inputmode="decimal"><span>&rarr; ' + tgtName + '</span><b id="vt-lens-cv">&ndash;</b></div>';
-        const conf = mb ? '<div class="vt-lens-conf">confidence <b>' + Math.round(mb.confidence * 100) + '%</b>' + (view === 'greeks' ? ' &middot; flip confluence <b>' + Math.round(mb.flip_confluence * 100) + '%</b> &middot; sign agreement <b>' + mb.sign_agreement.toFixed(2) + '</b>' : '') + ' &middot; weights: ' + (mb.scope.weighting === 'priority_only' ? 'priority only' : 'priority &times; liquidity') +
-            (mb.notes && mb.notes.length ? '<div class="vt-lens-warn">' + mb.notes.map(n => n.replace(/</g, '&lt;')).join(' | ') + '</div>' : '') + '</div>' : '';
-        const excl = mb ? mb.books.filter(b => !b.included).map(b => '<span class="vt-lens-ex" title="' + b.reason.replace(/"/g, '&quot;') + '">' + disp(b.id) + ' excluded</span>').join('') : '';
-        const syms = [...L.picked].length ? [...L.picked] : [P];
-        const title = 'Strike Lens &middot; ' + syms.map(id => '<em style="--c:' + color(id) + '">' + disp(id) + '</em>').join(' ');
-        const lensHtml = '<div class="vt-lens-h"><b>' + title + '</b></div><div class="vt-lens-chips" role="group" aria-label="Books to highlight">' + chips + excl + '</div>' + tbl + (gv && rows.length ? '<div class="vt-lens-note">Exposure = dealer GEX at the strike, $ per 1% move (+ stabilising / &minus; amplifying); dealers assumed long calls / short puts.</div>' : '') + meta + futToggle + conv + (view === 'greeks' ? '' : volBlock()) + conf;
-        // Chart Factors page: Strike Insights, Strike Lens, Hedge Flow as three bordered full-width sections (workfile CF §8.1); Pricing page keeps the single lens panel
-        el.innerHTML = view === 'greeks' ? '<section class="vt-cf-sec" data-sec="insights">' + insightBlock() + '</section><section class="vt-cf-sec" data-sec="lens">' + lensHtml + '</section><section class="vt-cf-sec" data-sec="hedge">' + hedgeBlock() + '</section>' : lensHtml;
+        if (!el.querySelector('.vt-lens-conv')) buildShell(el);
+        const sel = el.querySelector('#vt-lens-cb'), conv = lens.books.filter(b => b.convertible), sig = conv.map(b => b.id).join(',');
+        if (sel.dataset.sig !== sig) { const keep = sel.value || L.customBook || P; sel.innerHTML = conv.map(b => '<option value="' + b.id + '">' + disp(b.id) + '</option>').join(''); sel.dataset.sig = sig; sel.value = conv.some(b => b.id === keep) ? keep : (conv[0] || {}).id; }
+        el.querySelector('#vt-lens-rows').innerHTML = convRows();
+        const gv = view === 'greeks', sec = n => el.querySelector('[data-sec="' + n + '"]');
+        sec('insights').hidden = !gv; sec('hedge').hidden = !gv;
+        if (gv) { const op = new Map([...el.querySelectorAll('.vt-lc')].map(d => [d.dataset.k, d.open]));   // keep the user's open / closed cards across refreshes
+            sec('insights').innerHTML = cardsBlock(); sec('hedge').innerHTML = hedgeBlock(); el.querySelectorAll('.vt-lc').forEach(d => { if (op.has(d.dataset.k)) d.open = op.get(d.dataset.k); }); }
         el.dataset.epoch = L.lens.epoch || '';
-        el.querySelectorAll('.vt-lens-chip:not(.na)').forEach(c => c.addEventListener('click', () => { const id = c.dataset.id; L.picked.has(id) ? L.picked.delete(id) : L.picked.add(id); render(); }));
-        el.querySelectorAll('.vt-lens-t tr[data-v]').forEach(tr => tr.addEventListener('click', () => { const v = tr.dataset.v; if (v && navigator.clipboard) try { navigator.clipboard.writeText(v); } catch (e) {} tr.classList.add('copied'); }));
-        const tg = el.querySelector('#vt-lens-fut'); if (tg) tg.addEventListener('change', () => { L.showFut = tg.checked; render(); });
-        const upd = () => { const id = el.querySelector('#vt-lens-cb').value, k = parseFloat(el.querySelector('#vt-lens-ck').value); L.customBook = id; const out = el.querySelector('#vt-lens-cv');
-            const F = isNaN(k) ? null : L.toFut(id, k); const v = F == null ? null : (fam || P === lens.anchor ? F : L.fromFut(P, F)); out.textContent = v == null ? '–' : fmt(v, fam ? lens.tick : 0.01); };
-        el.querySelector('#vt-lens-ck').addEventListener('input', upd); el.querySelector('#vt-lens-cb').addEventListener('change', upd);
-        el.querySelectorAll('.vt-lens-hz button').forEach(b => b.addEventListener('click', () => L.setHorizon(b.dataset.hz)));
         repaintPanels(); fire();
     }
     L.render = render;
