@@ -26,11 +26,6 @@ const GREEK_SURFACE_MODELS = [
 ];
 
 const INSIGHT_SURFACE_MODELS = [
-    { channel: 'vrp',           title: 'VRP Surface',           xLabel: 'strike', zLabel: 'IV - RV', colorMode: 'signed', surfaceStyle: 'signed',
-      subtitle: 'IV minus RV — rich (green) favors fade/range, cheap (red) is a caution flag against fading moves' },
-    { channel: 'rnd',           title: 'RND Surface',           xLabel: 'strike', zLabel: 'density', colorMode: 'teal', surfaceStyle: 'signed',
-      wallLabels: ['Right Tail', 'Left Tail'],
-      subtitle: 'market-implied probability density of terminal price — read for shape change, not shift' },
     { channel: 'call_delta_iv', title: 'Call-Delta IV Surface', xLabel: 'delta',  zLabel: 'IV', colorMode: 'blue', surfaceStyle: 'bloomberg',
       subtitle: 'IV re-indexed by call delta — skew tracking independent of spot movement' },
     { channel: 'put_delta_iv',  title: 'Put-Delta IV Surface',  xLabel: 'delta',  zLabel: 'IV', colorMode: 'red', surfaceStyle: 'bloomberg',
@@ -112,10 +107,8 @@ function buildPanelRow(containerEl, modelList) {
 
 function buildSection1() {
     // first two Greek models sit beside the sidebar; the rest span the full width below
-    buildPanelRow(document.getElementById('vt-col-greeks-lead'), GREEK_SURFACE_MODELS.slice(0, 2));
-    buildPanelRow(document.getElementById('vt-col-greeks'), GREEK_SURFACE_MODELS.slice(2));
-    buildPanelRow(document.getElementById('vt-col-pricing-lead'), INSIGHT_SURFACE_MODELS.slice(0, 2));
-    buildPanelRow(document.getElementById('vt-col-pricing'), INSIGHT_SURFACE_MODELS.slice(2));
+    buildPanelRow(document.getElementById('vt-col-greeks'), GREEK_SURFACE_MODELS);
+    buildPanelRow(document.getElementById('vt-col-pricing'), INSIGHT_SURFACE_MODELS);
     renderSidebar();
     initPcaBiplot();
 }
@@ -180,9 +173,6 @@ function onModelUpdate(channel, jsonPayload) {
         flow.ivZ = data.value; flow.ivZn = data.n; flow.ivZDelta = data.delta; flow.ivZDte = data.dte;
     } else if (channel === 'rv_iv_zscore_tod') {
         flow.rvIvZ = data.value; flow.rvIvZn = data.n; flow.rvIvZBucket = data.bucket;
-    } else if (channel === 'vrp' && data.points && data.bucket === 'term') {
-        const avg = data.points.reduce((s, p) => s + p.y, 0) / data.points.length;
-        flow.atmVrp = avg;
     } else if (channel === 'spot') {
         currentSpot = data.value;
         allPanelRefs.forEach(p => { p.opts.spot = currentSpot; if (p.points) p.update(p.points); });
@@ -211,71 +201,11 @@ function renderSidebar() {
     const el = document.getElementById('vt-sidebar-body');
     if (!el) return;
     if (window.VT_SIDEBAR) VT_SIDEBAR.refresh();
-    const gexTerm = flow.gex['term'];
-    const gexClass = classFor(gexTerm ? gexTerm.net : null, false);
-    const vannaClass = classFor(flow.vannaNet, true, 0);
-    const charmClass = classFor(flow.charmNet, true, 0);
-    const dexClass = classFor(flow.dexNet, true, 0);
-    const flipClass = flow.flipRegime === 'long_gamma' ? 'v-bull' : flow.flipRegime === 'short_gamma' ? 'v-bear' : 'v-weak';
-    const skewApprox = (flow.ivZDelta === 0.25) ? flow.ivZ : null;
-    const skewClass = classFor(skewApprox, false, 1.0);
-    const rv = (flow.atmIv !== null && flow.atmVrp !== null) ? (flow.atmIv - flow.atmVrp) : null;
-
     el.innerHTML = `
         <div class="vt-flow-section">
-            <div class="vt-flow-section-title">Options Force — dealer hedging pressure</div>
-            <div class="vt-flow-row">${dot(gexClass)}<span class="vt-flow-label">Gamma (term)</span>
-                <span class="vt-flow-val ${gexClass}">${gexTerm ? gexTerm.net.toExponential(2) : '--'}</span>
-                <span class="vt-flow-note">${gexTerm ? (gexTerm.net > 0 ? '— dealers dampen moves → range/pin' : '— dealers amplify moves → trend runs') : 'awaiting data'}</span></div>
-            <div class="vt-flow-row">${dot(vannaClass)}<span class="vt-flow-label">Vanna</span>
-                <span class="vt-flow-val ${vannaClass}">${flow.vannaNet !== null ? flow.vannaNet.toExponential(2) : '--'}</span>
-                <span class="vt-flow-note">${flow.vannaNet !== null ? (flow.vannaNet >= 0 ? 'vol ↓ → dealers BUY (rally fuel)' : 'vol ↓ → dealers SELL') : 'awaiting data'}</span></div>
-            <div class="vt-flow-row">${dot(charmClass)}<span class="vt-flow-label">Charm</span>
-                <span class="vt-flow-val ${charmClass}">${flow.charmNet !== null ? flow.charmNet.toExponential(2) : '--'}</span>
-                <span class="vt-flow-note">${flow.charmNet !== null ? 'decay → dealer flow building into close' : 'awaiting data'}</span></div>
-            <div class="vt-flow-row">${dot(dexClass)}<span class="vt-flow-label">Net Dealer Lean</span>
-                <span class="vt-flow-val ${dexClass}">${fmtSigned(flow.dexNet, 2)}</span>
-                <span class="vt-flow-note">${flow.dexNet !== null ? (flow.dexNet >= 0 ? '▲ supportive' : '▼ resistive') : 'awaiting data'}</span></div>
-            <div class="vt-flow-row">${dot(gexTerm && flow.gex['0DTE'] ? classFor(flow.gex['0DTE'].net, false) : 'v-weak')}<span class="vt-flow-label">0DTE Gamma</span>
-                <span class="vt-flow-val">${flow.gex['0DTE'] ? flow.gex['0DTE'].net.toExponential(2) : '--'}</span>
-                <span class="vt-flow-note">${flow.gex['0DTE'] ? 'same-day pin/repulsion driver' : 'no 0DTE volume yet this session'}</span></div>
-            <div class="vt-flow-row">${dot(skewClass)}<span class="vt-flow-label">Skew (25Δ put IV z)</span>
-                <span class="vt-flow-val ${skewClass}">${skewApprox !== null ? skewApprox.toFixed(2) + 'σ' : '--'}</span>
-                <span class="vt-flow-note">${skewApprox === null ? 'awaiting 25Δ reading' : (Math.abs(skewApprox) > 1.5 ? 'stretched — statistically notable' : 'normal')}</span></div>
-        </div>
-
-        <div class="vt-flow-section">
-            <div class="vt-flow-section-title">Dealer exposure by DTE — net, per bucket</div>
+            <div class="vt-flow-section-title">Dealer exposure by DTE</div>
             ${renderDteMatrix()}
-        </div>
-
-        <div class="vt-flow-section">
-            <div class="vt-flow-section-title">Market State — range and volatility</div>
-            <div class="vt-flow-row"><span class="vt-flow-label">VRP (ATM, term)</span>
-                <span class="vt-flow-val v-white">${flow.atmVrp !== null ? flow.atmVrp.toFixed(3) : '--'}</span>
-                <span class="vt-flow-note">${flow.atmVrp === null ? 'awaiting data' : (flow.atmVrp > 0.02 ? 'rich — favors range/fade' : flow.atmVrp < -0.01 ? 'compressed — caution fading moves' : 'normal')}
-                    ${flow.atmIv !== null ? ` · IV ${(flow.atmIv * 100).toFixed(1)}%` : ''}${rv !== null ? ` RV ${(rv * 100).toFixed(1)}%` : ''}</span></div>
-            <div class="vt-flow-row"><span class="vt-flow-label">RV vs IV (time-of-day z)</span>
-                <span class="vt-flow-val ${classFor(flow.rvIvZ, false, 1.5)}">${flow.rvIvZ !== null ? flow.rvIvZ.toFixed(2) : '--'}</span>
-                <span class="vt-flow-note">${flow.rvIvZ === null ? 'awaiting data' : `n=${flow.rvIvZn}, bucket ${flow.rvIvZBucket || '-'}`}</span></div>
-            <div class="vt-flow-row"><span class="vt-flow-label">Call OI Momentum</span>
-                <span class="vt-flow-val ${classFor(flow.callOiMomentum, true, 0.01)}">${flow.callOiMomentum !== null ? flow.callOiMomentum.toFixed(4) : '--'}</span></div>
-            <div class="vt-flow-row"><span class="vt-flow-label">Put OI Momentum</span>
-                <span class="vt-flow-val ${classFor(flow.putOiMomentum, false, 0.01)}">${flow.putOiMomentum !== null ? flow.putOiMomentum.toFixed(4) : '--'}</span></div>
-        </div>
-
-        <div class="vt-flow-section">
-            <div class="vt-flow-section-title">Scenario — where it wants to go</div>
-            ${renderScenarioSlider()}
-            <div class="vt-flow-row"><span class="vt-flow-label">Regime</span>
-                <span class="vt-flow-val ${flipClass}">${flow.flipRegime || '--'}</span></div>
-            <div class="vt-levels-ladder">
-                ${gexTerm && gexTerm.callWall !== null ? `<div class="vt-level-row"><span class="vt-level-arrow up">▲</span><span class="vt-level-price">${gexTerm.callWall.toFixed(0)}</span><span class="vt-level-desc">call wall (GEX max)</span></div>` : ''}
-                ${flow.flipLevel !== null ? `<div class="vt-level-row"><span class="vt-level-arrow up">▲</span><span class="vt-level-price">${(+flow.flipLevel).toFixed(0)}</span><span class="vt-level-desc">gamma flip / zero-cross</span></div>` : ''}
-                ${gexTerm && gexTerm.putWall !== null ? `<div class="vt-level-row"><span class="vt-level-arrow down">▼</span><span class="vt-level-price">${gexTerm.putWall.toFixed(0)}</span><span class="vt-level-desc">put wall (GEX min)</span></div>` : ''}
-            </div>
-        </div>
-    `;
+        </div>`;
 }
 
 function renderDteMatrix() {
@@ -286,24 +216,6 @@ function renderDteMatrix() {
     return `<table class="vt-dte-matrix"><thead><tr><th></th>${buckets.map(b => `<th>${b === 'term' ? 'Term' : b}</th>`).join('')}</tr></thead><tbody>` +
         GREEK_CHANNELS.map(ch => `<tr><td>${names[ch]}</td>${buckets.map(b => cell((flow.net[ch] || {})[b])).join('')}</tr>`).join('') +
         `</tbody></table>`;
-}
-
-function renderScenarioSlider() {
-    if (flow.flipDistance === null) return `<div class="vt-placeholder-note">awaiting gamma flip data</div>`;
-    const bias = Math.max(-1, Math.min(1, flow.flipDistance / 40));
-    const pct = ((bias + 1) / 2) * 100;
-    const side = bias >= 0 ? 'LONG' : 'SHORT';
-    const cls = bias >= 0 ? 'v-bull' : 'v-bear';
-    const color = bias >= 0 ? '#2fd06a' : '#e04b4b';
-    return `
-        <div class="vt-flow-row"><span class="vt-flow-label">Bias</span>
-            <span class="vt-flow-val ${cls}">${side} ${(Math.abs(bias) * 100).toFixed(0)}%</span>
-            <span class="vt-flow-note">flip-distance driven</span></div>
-        <div class="vt-scenario-slider">
-            <div class="track-fill" style="left:${bias >= 0 ? 50 : pct}%; right:${bias >= 0 ? 100 - pct : 50}%; background:${color};"></div>
-            <div class="dot" style="left:${pct}%; background:${color};"></div>
-        </div>
-        <div class="vt-scenario-endlabels"><span>SHORT</span><span>LONG</span></div>`;
 }
 
 // ---- PCA Regime Model (bottom of page) ----
@@ -489,10 +401,13 @@ function onInsightUpdate(jsonPayload) {
 }
 
 function placeSidebar(pageId) {
-    const slots = { 'vt-page-greeks': 'vt-side-slot-greeks', 'vt-page-pricing': 'vt-side-slot-pricing', 'vt-page-cf': 'vt-side-slot-cf' };
-    const slot = document.getElementById(slots[pageId]); // the main page has no sidebar
+    // Sidebar rule: shown on every page EXCEPT Pricing Surfaces and Chart Factors (docked right, full height of the content area)
+    const slots = { 'vt-page-main': 'vt-side-slot-main', 'vt-page-greeks': 'vt-side-slot-greeks' };
+    const slot = document.getElementById(slots[pageId]);
     const sb = document.getElementById('vt-sidebar');
     if (slot && sb && sb.parentElement !== slot) slot.appendChild(sb);
+    if (sb) sb.hidden = !slot;
+    document.body.dataset.page = pageId;
     // the Strike Lens is one shared element too: same state on both pages, never diverges
     const lslots = { 'vt-page-cf': 'vt-lens-slot-cf', 'vt-page-pricing': 'vt-lens-slot-pricing' };   // the three sections live on Chart Factors; the Greeks page no longer hosts any lens
     const ls = document.getElementById(lslots[pageId]), lens = document.getElementById('vt-lens');
@@ -548,6 +463,7 @@ function setupTickers() {
 
 window.addEventListener('DOMContentLoaded', () => {
     buildSection1();
+    placeSidebar('vt-page-main');
     setupTickers();
     setupPageNav();
 });
