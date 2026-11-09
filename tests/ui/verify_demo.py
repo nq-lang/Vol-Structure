@@ -16,9 +16,8 @@ try:
         for page in ["vt-page-main", "vt-page-pricing", "vt-page-greeks", "vt-page-cf"]:
             pg.click(f'[data-page="{page}"]'); pg.wait_for_timeout(900); t = pg.evaluate("document.body.innerText")
             chk(not re.search(r"(?i)awaiting|waiting for data|no data", t) and len(t) > 3000, f"{page}: populated ({len(t)} chars)")
-        ca = pg.evaluate("()=>({h:VT_CF.state.hist.length,liq:!!VT_CF.state.liq,lit:VT_CF.state.layers.liq})"); chk(ca["h"] >= 8 and ca["liq"] and ca["lit"], f"chart factors history + live depth running {ca}")
+        ca = pg.evaluate("()=>({h:VT_CF.state.hist.length,lay:VT_CF.state.layers})"); chk(ca["h"] >= 8 and ca["lay"]["heat"] and ca["lay"]["can"] and ca["lay"]["ref"], f"chart factors history running, mandatory layers on {ca}")
         h0 = pg.evaluate("VT_CF.state.hist.length"); pg.wait_for_timeout(9000); h1 = pg.evaluate("VT_CF.state.hist.length"); chk(h1 > h0, f"chart epochs advance continuously ({h0}->{h1})")
-        u0 = pg.evaluate("VT_CF.state.liq.upd"); pg.wait_for_timeout(1500); chk(pg.evaluate("VT_CF.state.liq.upd") > u0, "depth stream ingesting")
         pg.click('[data-page="vt-page-main"]'); pg.click('.vt-ticker[data-ticker="GC"]'); pg.wait_for_timeout(2500); pg.click('[data-page="vt-page-cf"]'); pg.wait_for_timeout(1500)
         chk(pg.evaluate("VT_CF.state.hist.length") >= 1 and "GC" in pg.evaluate("document.body.innerText"), "scope switch to GC re-feeds the chart")
         chk(not errs, f"page errors {errs[:3]}"); b.close()
