@@ -20,10 +20,9 @@ class PcaBiplotPanel {
         this.liveData = null;
         this.trail = [];
         this.showPulls = true;
-        this.showEllipsoids = true;
-        this.fittedShape = false; // false = round bubbles (default); true = true covariance ellipsoids
-        this.bubbleSpread = 1;   // exploded-view factor for the regime bubbles (1 = true score positions)
-        this.vectorSpread = 1;   // multiplier on the ONE shared arrow constant (all arrows scale together)
+        // locked display parameters (no controls): per-regime point clouds are spread at 2.8x, loading vectors at exactly 1.0x
+        this.bubbleSpread = 2.8;
+        this.vectorSpread = 1.0;
 
         this.root = document.createElement('div');
         this.root.style.cssText = 'position:relative;width:100%;height:100%;';
@@ -42,39 +41,13 @@ class PcaBiplotPanel {
         this.views = null; // ProjectionView, created below once the overlay rows exist
         this.legend = document.createElement('div');
         this.legend.className = 'vt-pca-toggle-row';
-        this.legend.innerHTML = `
-            <button class="vt-pca-toggle-btn active" data-t="pulls">Feature Pulls</button>
-            <button class="vt-pca-toggle-btn active" data-t="ellipsoids">Regime Bubbles</button>
-            <button class="vt-pca-toggle-btn" data-t="fitted" title="Show the true fitted covariance shape instead of round bubbles">Fitted Shape</button>`;
         this.root.appendChild(this.legend);
-        this.legend.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
-            btn.classList.toggle('active');
-            if (btn.dataset.t === 'pulls') this.showPulls = btn.classList.contains('active');
-            if (btn.dataset.t === 'ellipsoids') this.showEllipsoids = btn.classList.contains('active');
-            if (btn.dataset.t === 'fitted') { this.fittedShape = btn.classList.contains('active'); this._frame(); }
-            this.draw(); this.views.draw();
-        }));
         // view selector (visualization task): PCA 3D is the unchanged baseline; the others are display-only views
         this.mode = 'pca3d';
         this.legend.insertAdjacentHTML('afterbegin', `<span class="vt-view-tabs" role="tablist">
             <button class="vt-view-tab active" data-m="pca3d">PCA 3D</button><button class="vt-view-tab" data-m="pca2d">PCA 2D</button>
             <button class="vt-view-tab" data-m="tsne2d">t-SNE 2D</button><button class="vt-view-tab" data-m="tsne3d">t-SNE 3D</button></span>`);
         this.legend.querySelectorAll('.vt-view-tab').forEach(b => b.addEventListener('click', () => this.setMode(b.dataset.m)));
-
-        this.controls = document.createElement('div');
-        this.controls.className = 'vt-pca-controls';
-        this.controls.innerHTML = `
-            <label><span class="nm">Bubbles</span><input type="range" min="1" max="2.5" step="0.05" value="1" data-s="bubble"><span class="val" data-v="bubble">1.0×</span></label>
-            <label><span class="nm">Vectors</span><input type="range" min="1" max="2.5" step="0.05" value="1" data-s="vector"><span class="val" data-v="vector">1.0×</span></label>
-            <div class="note">Spread view: bubbles are moved apart (each with its own points) and arrows lengthened for legibility. Set both to 1.0× for exact score positions and the exact per-feature decomposition.</div>`;
-        this.root.appendChild(this.controls);
-        this.controls.querySelectorAll('input[type=range]').forEach(inp => inp.addEventListener('input', () => {
-            const v = parseFloat(inp.value);
-            if (inp.dataset.s === 'bubble') this.bubbleSpread = v; else this.vectorSpread = v;
-            this.controls.querySelector(`[data-v="${inp.dataset.s}"]`).textContent = v.toFixed(1) + '×';
-            this.controls.querySelector('.note').style.display = (this.bubbleSpread !== 1 || this.vectorSpread !== 1) ? 'block' : 'none';
-            this._frame(); this.draw();
-        }));
 
         this.views = new ProjectionView(this);
         this.legendBox = document.createElement('div');
@@ -93,7 +66,6 @@ class PcaBiplotPanel {
     // how spread out the regime is but the shape is never a flat disc. 'Fitted Shape' returns
     // the true covariance ellipsoid (orthonormal axes, one radius each).
     _bubbleAxes(e) {
-        if (this.fittedShape) return e.axes;
         const r = Math.cbrt(Math.max(1e-9, e.axes[0][3] * e.axes[1][3] * e.axes[2][3]));
         return [[1, 0, 0, r], [0, 1, 0, r], [0, 0, 1, r]];
     }
@@ -204,7 +176,6 @@ class PcaBiplotPanel {
         this._hit = [];
 
         this._drawAxes(ctx, P);
-        if (this.showEllipsoids) this._drawEllipsoids(ctx, P);
         this._drawPoints(ctx, P);
         this._drawArrows(ctx, P);
         if (this.showPulls && this.liveData) this._drawPulls(ctx, P);
@@ -220,53 +191,6 @@ class PcaBiplotPanel {
             ctx.strokeStyle = 'rgba(160,170,185,0.4)'; ctx.lineWidth = 1;
             ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke();
             ctx.fillStyle = 'rgba(180,190,205,0.75)'; ctx.fillText(ax.label, b.sx + 3, b.sy);
-        }
-    }
-
-    _drawEllipsoids(ctx, P) {
-        const rings = 10, seg = 28;
-        for (const e of this.staticData.ellipsoids || []) {
-            const axes = this._bubbleAxes(e);
-            const sh = this._shift(e.regime);
-            const cx = e.center[0] + sh[0], cy = e.center[1] + sh[1], cz = e.center[2] + sh[2];
-            const localPoint = (u, v) => {
-                const su = Math.sin(u), cu = Math.cos(u), sv = Math.sin(v), cv = Math.cos(v);
-                const local = [su * cv, cu, su * sv];
-                let out = [cx, cy, cz];
-                for (let k = 0; k < 3; k++) {
-                    const [ax, ay, az, r] = axes[k];
-                    out = [out[0] + ax * local[k] * r, out[1] + ay * local[k] * r, out[2] + az * local[k] * r];
-                }
-                return out;
-            };
-            ctx.strokeStyle = e.color + '55'; ctx.lineWidth = 0.7;
-            let topScreen = null, topY = Infinity;
-            for (let ring = 1; ring < rings; ring++) {
-                const u = (ring / rings) * Math.PI;
-                let prev = null;
-                for (let s = 0; s <= seg; s++) {
-                    const v = (s / seg) * Math.PI * 2;
-                    const sp = P(...localPoint(u, v));
-                    if (prev) { ctx.beginPath(); ctx.moveTo(prev.sx, prev.sy); ctx.lineTo(sp.sx, sp.sy); ctx.stroke(); }
-                    prev = sp;
-                    if (sp.sy < topY) { topY = sp.sy; topScreen = sp; }
-                }
-            }
-            for (let s = 0; s < seg; s += 2) {
-                const v = (s / seg) * Math.PI * 2;
-                let prev = null;
-                for (let ring = 0; ring <= rings; ring++) {
-                    const u = (ring / rings) * Math.PI;
-                    const sp = P(...localPoint(u, v));
-                    if (prev) { ctx.beginPath(); ctx.moveTo(prev.sx, prev.sy); ctx.lineTo(sp.sx, sp.sy); ctx.stroke(); }
-                    prev = sp;
-                }
-            }
-            const labelPos = topScreen || P(cx, cy, cz);
-            ctx.font = 'bold 12px monospace';
-            ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillText(e.name, labelPos.sx - 9, labelPos.sy - 9);
-            ctx.fillStyle = e.color; ctx.fillText(e.name, labelPos.sx - 10, labelPos.sy - 10);
-            this._hit.push({ sx: labelPos.sx, sy: labelPos.sy, type: 'regime', data: e });
         }
     }
 
@@ -365,7 +289,7 @@ class PcaBiplotPanel {
         this.tooltip.style.right = 'auto';
         if (best.type === 'regime') {
             const n = (this.staticData.points || []).filter(p => p.regime === best.data.regime).length;
-            this.tooltip.innerHTML = `<div><b style="color:${best.data.color}">${best.data.name}</b></div><div class="hr">n=${n} historical days in this regime</div><div class="hr">${this.fittedShape ? 'true fitted covariance shape' : 'round (same volume as fitted shape)'}</div>`;
+            this.tooltip.innerHTML = `<div><b style="color:${best.data.color}">${best.data.name}</b></div><div class="hr">n=${n} historical days in this regime</div><div class="hr">regime</div>`;
         } else if (best.type === 'feature') {
             const live = this.liveData?.feature_contributions?.find(c => c.name === best.data.name);
             const mag = live ? Math.hypot(...live.pull).toFixed(3) : 'n/a';

@@ -99,13 +99,10 @@ with sync_playwright() as p:
         lvpx = pg.evaluate("VT_CF.levelsPx()"); L0 = [l for l in lvpx if "Flip" in l["label"] or "Wall" in l["label"]][0]; pg.mouse.move(box[0] + g["x0"] + 300, box[1] + L0["y"]); pg.wait_for_timeout(200)
         chk(pg.locator("#vt-lens-slot-cf .cf-hl").count() >= 1, "hovering a level highlights its row in the sections")
         pg.mouse.move(box[0] + 5, box[1] + 5)
-        pg.hover("#vt-lens-slot-cf .vt-lens-t tbody tr:nth-child(3)"); pg.wait_for_timeout(150); chk(pg.evaluate("VT_CF.state.hl") is not None, "hovering a section row highlights it on the chart")
         # --- hedge curve interpolation sanity (monotone cubic stays within data bounds)
         ok = pg.evaluate("""()=>{const h=VT_CF.state.chart.hedge,f=VT_CF.mcInterp(h.prices,h.cost1pct);const lo=Math.min(...h.cost1pct),hi=Math.max(...h.cost1pct);for(let i=0;i<50;i++){const p=h.prices[0]+(h.prices[h.prices.length-1]-h.prices[0])*i/49;const v=f(p);if(v<lo-1e-6||v>hi+1e-6)return false;}for(let i=0;i<h.prices.length;i++)if(Math.abs(f(h.prices[i])-h.cost1pct[i])>1e-6)return false;return true;}""")
         chk(ok, "hedge curve interpolation: exact at nodes, no overshoot")
         # --- tabs drive chart + sections together
-        pg.click('.vt-lens-hz button[data-hz="swinging"]'); pg.wait_for_timeout(250); chk(pg.evaluate("VT_LENS.hz") == "swinging" and pg.evaluate("VT_CF.texInfo() && VT_CF.texInfo().id==VT_CF.state.metric"), "Intraday/Swinging tab switches the chart heat too")
-        pg.click('.vt-lens-hz button[data-hz="intraday"]'); pg.wait_for_timeout(150)
         # --- single-book: chart explains, sections hidden
         pg.evaluate("window.VT_SCOPE.apply('SPX','single')"); pg.wait_for_timeout(250); chk("Multi-Book / Family" in pg.inner_text("#vt-cf") or pg.evaluate("document.getElementById('vt-lens').hidden"), "single-book handled")
         # --- all active tickers: NQ ES GC CL SI YM render, with asset+strike pills, outcome chips, contrast helper, 19 px chips, no errors

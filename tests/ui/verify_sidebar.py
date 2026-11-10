@@ -16,22 +16,22 @@ with sync_playwright() as p:
     for pl in d["model_updates"]: send(pl)
     go = lambda page: (pg.click(f'[data-page="{page}"]'), pg.wait_for_timeout(250))
     txt = lambda: pg.evaluate("document.getElementById('vt-sidebar-body').innerText")
-    pages = ["vt-page-main", "vt-page-pricing", "vt-page-greeks"]
+    pages = ["vt-page-main", "vt-page-pricing", "vt-page-greeks", "vt-page-cf"]
     for page in pages:
         go(page)
         r = pg.evaluate("()=>{const s=document.getElementById('vt-sidebar'),b=s.getBoundingClientRect();return [document.querySelectorAll('#vt-sidebar').length,b.width>200&&b.height>200]}")
-        want = [1, False] if page == "vt-page-main" else [1, True]   # the main page has NO sidebar
+        want = [1, True] if page in ("vt-page-main", "vt-page-greeks") else [1, False]   # shown everywhere EXCEPT Pricing Surfaces and Chart Factors; docked right
         if r != want: bad.append((page, "wrong sidebar presence", r))
     # update arrives while on greeks; open pricing; must match
     go("vt-page-greeks")
     for pl in d["model_updates"]:
         if pl.get("_channel", pl["model"]) == "gex" and pl["bucket"] == "term": send(pl, 3.0)
     t_greeks = txt()
-    for page in ["vt-page-pricing", "vt-page-greeks"]:
+    for page in ["vt-page-main", "vt-page-greeks"]:
         go(page)
         if txt() != t_greeks: bad.append((page, "sidebar text diverged"))
     # and the reverse: update while on pricing, read on greeks
-    go("vt-page-pricing")
+    go("vt-page-main")
     for pl in d["model_updates"]:
         if pl.get("_channel", pl["model"]) == "gex" and pl["bucket"] == "term": send(pl, 0.5)
     t_pricing = txt(); go("vt-page-greeks")

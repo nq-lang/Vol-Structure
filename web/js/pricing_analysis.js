@@ -94,7 +94,7 @@
             ['Shape (' + b.ref_dte + 'd)', '<span class="n">skew ' + esc(sk.v) + ' · ex.kurt ' + esc(ku.v) + ' · ' + nm + (nm > 1 ? ' modes' : ' mode') + '</span> <small class="mut">' + heavy + '</small>'],
             ['Tails (−1σ / +1σ · −2σ / +2σ)', '<span class="n">' + esc(t1.v) + ' &nbsp; ' + esc(t2.v) + '</span>'],
             ['Reads', e1 == null ? '–' : 'Session range ' + nf(sp - e1) + '–' + nf(sp + e1) + '; beyond ' + nf(sp + 2 * e1) + ' / ' + nf(sp - 2 * e1) + ' is a &lt;5% tail.', 'Targets past ' + esc(String(r90.v).split('–')[1] || r90.v) + ' are tail trades; ' + heavy + ', ' + esc(pb.v) + ' finish below spot.'],
-            conflict(RI, RS) && ['Alignment', conflict(RI, RS)]], hist(a.hist));
+            ['Alignment', conflict(RI, RS) || (RI.ok && RS.ok && RI.lean && RI.lean === RS.lean ? '<b class="mut">Aligned</b> <small class="mut">intraday and swing lean the same way</small>' : '<b class="mut">No conflict</b> <small class="mut">at least one horizon has no directional lean</small>')]], hist(a.hist));
     }
     function intraTable(b, RI, RS) {
         if (!RI.ok) return '<section class="vt-pa-blk vt-pa-tb intra"><h4>Intraday structure</h4><div class="vt-lens-empty">Unavailable &mdash; ' + esc(RI.reason) + '.</div></section>';

@@ -25,11 +25,6 @@ with sync_playwright() as p:
             dom1 = pg.evaluate(f"{V}.viz.points.filter(p=>p.dominant===1).length"); chk(n2 == dom1, f"isolate regime 1: {n2} vs {dom1}")
             chk(pg.eval_on_selector('.vt-pca-legend .row[data-r="0"]', "e=>e.classList.contains('off')"), "legend marks hidden rows")
             pg.click('.vt-view-modebar [data-act=home]'); chk(pg.evaluate(f"{V}.hidden.size") == 0, "home restores regimes")
-            # color by confidence / time: colours differ across points and a colorbar is drawn
-            for cv in ["-3"]:
-                pg.select_option('[data-act=colorby]', cv); cols = pg.evaluate(f"new Set({V}.viz.points.map((p,i)=>{V}._colorOf(p,i).map(Math.round).join())).size"); chk(cols > 5, f"color-by {cv} gives a gradient ({cols} colours)")
-            pg.select_option('[data-act=colorby]', "-2"); chk(pg.evaluate(f"{V}._colorOf({V}.viz.points[0],0).every(Number.isFinite)"), "confidence colours valid")
-            pg.select_option('[data-act=colorby]', "-1")
             # pan: drag in pan mode translates the view
             pg.click('.vt-view-modebar [data-act=pan]'); box = pg.eval_on_selector(".vt-pca-biplot-wrap canvas:visible", "c=>{const r=c.getBoundingClientRect();return [r.x,r.y,r.width,r.height]}") if False else None
             c = pg.locator(".vt-pca-biplot-wrap canvas:visible").last.bounding_box(); R = pg.evaluate(f"{V}.rect"); x0, y0 = c["x"] + R["x0"] + 40, c["y"] + R["y0"] + 40   # inside the plot rectangle (boxes sit outside it)
@@ -38,7 +33,6 @@ with sync_playwright() as p:
             # PNG export works
             chk(pg.evaluate(f"{V}.canvas.toDataURL('image/png').startsWith('data:image/png')"), "png export")
             if mode == "pca2d": shots.shot(pg, 3, f"SPX_single_pca2d_controls", vp, locator=".vt-pca-biplot-wrap")
-        pg.select_option('[data-act=colorby]', "-2"); shots.shot(pg, 3, "SPX_single_tsne2d_confidence", vp, locator=".vt-pca-biplot-wrap")
         chk(not errs, f"page errors {errs}")
     b.close()
 print("FAILURES:", F if F else "none")

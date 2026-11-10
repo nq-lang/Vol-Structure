@@ -1,9 +1,9 @@
 import os as _os; VT_ROOT = _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", ".."))
 import json
 from playwright.sync_api import sync_playwright
-CHROME = "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"
+CHROME = __import__("os").environ.get("PW_CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
 data = json.load(open((VT_ROOT + "/preview/synthetic_payloads.json")))
-CH = ["gex","dex","vanna","charm","speed","color","theta","vrp","rnd","call_delta_iv","put_delta_iv"]
+CH = ["gex","dex","vanna","charm","speed","color","theta","call_delta_iv","put_delta_iv"]
 EXPECT = {"0DTE": {0}, "1DTE": {1}, "2DTE": {2}}
 payload = {(pl.get("_channel", pl["model"]), pl["bucket"]): pl for pl in data["model_updates"] if "bucket" in pl}
 fails, n = [], 0

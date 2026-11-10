@@ -384,3 +384,11 @@ T2-5 hedging, T2-6 vol/risk, T2-7 multibook_v1, T2-8 scoped LLM layer, cross-boo
 
 ## Codespaces demo
 - `.devcontainer/devcontainer.json` (port 8080 auto-forwarded, opens in browser), `tools/serve_demo.py` (serves web/ + fixtures, gzip), `web/demo/demo.js` (synthetic feeder for every model, continuous updates, scope-aware), `tests/ui/verify_demo.py`.
+
+
+## Terminal optimization taskfile (implemented)
+- Sidebar ("Dealer exposure by DTE" only) docked right on Volatility Analysis + Greeks; hidden on Pricing Surfaces and Chart Factors. Market State / Scenario / Options Force sections removed.
+- Pricing: VRP/RND surfaces, "Vol & Risk" and Options market view removed. Tables: Distribution model, Intraday structure, Weekly structure, Thesis & risk, each Intraday vs Swing with an alignment line. Strike lens = persistent index/ETF to futures converter (localStorage, user-removed only), DTE + intraday/swing flag.
+- Chart Factors: full width; heatmap, strike lens, Intraday/Swing level cards (Valid until, Distance/P(touch)/Fed by, Invalidated by, playbook with approach/trigger/why). Hedge flow table in the requested order plus merged reference table. Live Depth/stream layer removed; candles/heat/levels/forensics legend always on; readout shows strike, futures, nearest strike, Greek exposures only.
+- PCA: bubbles 2.8, vectors 1.0 locked (controls hidden), feature pulls always on, regime bubbles / fitted shape / Color by removed; 2D is a flat upright plane (pan only).
+- Tests: verify_taskfile.py added; verify_lens/cards/riskblocks/bubbles and the stream tests removed with their features.

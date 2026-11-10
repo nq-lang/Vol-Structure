@@ -391,7 +391,7 @@ class SurfacePanel {
         const { ctx, w, h } = vtSizeCanvas(canvas, canvas.parentElement);
         ctx.clearRect(0, 0, w, h);
         ctx.fillStyle = '#0a0b0e'; ctx.fillRect(0, 0, w, h);
-        const padL = 46, padB = 16, padT = 6, padR = 8;
+        const padL = 44, padB = 16, padT = 6, padR = 10;
         const plotW = w - padL - padR, plotH = h - padT - padB;
         const isSigned = this.opts.colorMode === 'signed';
         const vMin = isSigned ? Math.min(...row, 0) : Math.min(...row);
@@ -447,13 +447,17 @@ class SurfacePanel {
         ctx.beginPath(); ctx.arc(sx(peakI), sy(row[peakI]), 3.4, 0, Math.PI * 2);
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.2; ctx.stroke();
 
-        // axis labels
-        ctx.fillStyle = LABEL_COLOR; ctx.font = '8.5px monospace';
-        ctx.fillText(String(g.xs[0]), padL, h - 4);
-        ctx.fillText(String(g.xs[g.xs.length - 1]), w - padR - 28, h - 4);
-        ctx.save(); ctx.translate(10, padT + plotH / 2); ctx.rotate(-Math.PI / 2);
-        ctx.fillText(this.opts.zLabel.length > 14 ? this.opts.zLabel.slice(0, 14) : this.opts.zLabel, 0, 0);
-        ctx.restore();
+        // axes: lines, y min/max (and 0 for signed series), x endpoints + variable title
+        ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(padL, padT); ctx.lineTo(padL, padT + plotH); ctx.lineTo(w - padR, padT + plotH); ctx.stroke();
+        const fv = v => { const a = Math.abs(v); return a >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : a >= 1e3 ? (v / 1e3).toFixed(1) + 'k' : a === 0 ? '0' : a < 0.01 ? v.toExponential(0) : a < 1 ? v.toFixed(3) : v.toFixed(1); };
+        ctx.fillStyle = LABEL_COLOR; ctx.font = '8.5px monospace'; ctx.textAlign = 'right';
+        ctx.fillText(fv(vMax), padL - 4, padT + 8);
+        ctx.fillText(fv(vMin), padL - 4, padT + plotH);
+        if (isSigned && vMin < 0 && vMax > 0) ctx.fillText('0', padL - 4, sy(0) + 3);
+        ctx.textAlign = 'left'; ctx.fillText(String(g.xs[0]), padL, h - 4);
+        ctx.textAlign = 'right'; ctx.fillText(String(g.xs[g.xs.length - 1]), w - padR, h - 4);
+        ctx.textAlign = 'center'; ctx.fillText(this.opts.xLabel + ' \u2192', padL + plotW / 2, h - 4); ctx.textAlign = 'left';
 
         canvas.onmousemove = (e) => {
             const r = canvas.getBoundingClientRect();

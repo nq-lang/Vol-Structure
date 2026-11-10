@@ -46,7 +46,7 @@ class ProjectionView {
         this.sel = null;          // {type:'pt', i} | {type:'live', i}
         this.hiddenF = new Set(); this.rect = null; this.off = [0, 0];
         this.pan = [0, 0]; this.panMode = false; this.hidden = new Set();
-        this.spot = -1;           // feature index being spotlighted (-1 = none)
+        this.spot = -1;           // colouring is by regime only (fixed -1); the spotlight branches below are inert
         this.showAll = false;
         this.tpos = null;         // timeline scrubber position (null = follow latest)
         this.playing = null;
@@ -76,10 +76,7 @@ class ProjectionView {
               <button class="vt-pca-toggle-btn" data-pair="1">PC1 / PC3</button>
               <button class="vt-pca-toggle-btn" data-pair="2">PC2 / PC3</button>
             </span>
-            <button class="vt-pca-toggle-btn" data-act="flatten">Flatten</button>
-            <button class="vt-pca-toggle-btn" data-act="showall">Show all labels</button>
-            <label class="vt-view-select">Color by
-              <select data-act="colorby"><option value="-1">Regime</option></select></label>`;
+            <button class="vt-pca-toggle-btn" data-act="showall">Show all labels</button>`;
         r.appendChild(this.bar);
         // Plotly-style modebar (zoom in/out, pan, reset, PNG) and click-to-toggle legend
         this.modebar = document.createElement('div'); this.modebar.className = 'vt-view-modebar'; this.modebar.style.display = 'none';
@@ -96,9 +93,7 @@ class ProjectionView {
             this.bar.querySelectorAll('[data-pair]').forEach(x => x.classList.toggle('active', x === b));
             this.setPair(VT_PAIRS[+b.dataset.pair]);
         }));
-        this.bar.querySelector('[data-act=flatten]').addEventListener('click', () => this.flatten());
         this.bar.querySelector('[data-act=showall]').addEventListener('click', (e) => { this.showAll = !this.showAll; e.target.classList.toggle('active', this.showAll); this.draw(); });
-        this.bar.querySelector('[data-act=colorby]').addEventListener('change', (e) => { this.spot = +e.target.value; this.draw(); });
 
         this.vars = document.createElement('div'); this.vars.className = 'vt-view-vars'; this.vars.style.display = 'none'; r.appendChild(this.vars);
         this.vars.addEventListener('click', (e) => {
@@ -107,7 +102,7 @@ class ProjectionView {
                 this._renderVars(); this.draw(); return; }
             const eye = e.target.closest('.eye'), row = e.target.closest('.vr'); if (!row) return; const f = +row.dataset.f;
             if (eye) { this.hiddenF.has(f) ? this.hiddenF.delete(f) : this.hiddenF.add(f); }
-            else { this.spot = this.spot === f ? -1 : f; this.bar.querySelector('[data-act=colorby]').value = String(this.spot); if (this.spot === f) this.hiddenF.delete(f); }
+            
             this._renderVars(); this.draw(); });
         this.badge = document.createElement('div'); this.badge.className = 'vt-view-badge'; this.badge.style.display = 'none';
         r.appendChild(this.badge);
@@ -136,9 +131,6 @@ class ProjectionView {
     // ------------------------------------------------------------ data in
     setViz(viz) {
         this.viz = viz; this.live = []; this.sel = null; this.tpos = null;
-        const sel = this.bar.querySelector('[data-act=colorby]');
-        sel.innerHTML = '<option value="-1">Regime</option><option value="-2">Confidence (max posterior)</option><option value="-3">Time (day order)</option>' + (viz.feature_short || []).map((n, i) => `<option value="${i}">${n}</option>`).join('');
-        sel.value = String(this.spot);
         this._kdeCache = null; this.hidden.clear(); this.hiddenF.clear(); this._renderLegend();
         this._relayout(); this._syncScrub(); this._updateChromeState(); this._renderFoot(); this._renderCard();
         if (this.active) { this._snapPositions(); this.draw(); }
@@ -204,7 +196,8 @@ class ProjectionView {
     _fit(mode, pair, w, h) {
         let mx = 1e-9, my = 1e-9, mz = 1e-9;
         const items = this._items();
-        for (const it of items) { const r = this._raw(it, mode, pair); mx = Math.max(mx, Math.abs(r[0])); my = Math.max(my, Math.abs(r[1])); mz = Math.max(mz, Math.abs(r[2])); }
+        const cen = this._centroids(), spd = this.panel.bubbleSpread - 1;
+        for (const it of items) { const r0 = this._raw(it, mode, pair), cc = cen[this._dominantOf(it)] || [0, 0, 0], r = [r0[0] + cc[0] * spd, r0[1] + cc[1] * spd, (r0[2] || 0) + (cc[2] || 0) * spd]; mx = Math.max(mx, Math.abs(r[0])); my = Math.max(my, Math.abs(r[1])); mz = Math.max(mz, Math.abs(r[2])); }
         if (mode === 'pca2d' || mode === 'pca3d') {   // arrows must fit too
             const sc = (this.panel.staticData?.arrow_scale || 6) * this.panel.vectorSpread;
             for (const l of this.viz?.pca_meta?.loadings || []) {
@@ -213,7 +206,7 @@ class ProjectionView {
             }
         }
         const k = this.panel.bubbleSpread;                       // headroom for the exploded view
-        const spread = 1 + (k - 1) * 0.6;
+        const spread = 1.08;   // spread is already inside the extents; small margin only
         const R = this.rect || { x0: 0, x1: w, y0: 0, y1: h }, pw = R.x1 - R.x0, ph = R.y1 - R.y0;
         const pxPer = this._is3d(mode) ? (Math.min(pw, ph) * 0.36) / (Math.max(mx, my, mz) * spread)
                                        : Math.min((pw * 0.44) / (mx * spread), (ph * 0.44) / (my * spread));
@@ -340,16 +333,15 @@ class ProjectionView {
             if (pts.size === 1) {
                 const dx = cur[0] - prev[0], dy = cur[1] - prev[1]; moved += Math.abs(dx) + Math.abs(dy);
                 if (this.panMode) { this.pan[0] += dx; this.pan[1] += dy; this.draw(); return; }
-                if (e.shiftKey) { this.cam.roll += dx * 0.01; this.draw(); return; }                 // in-plane spin
-                const flatMode = !this._is3d();
-                if (flatMode && !this.unlocked) { if (moved > 14) this.unlocked = true; else return; } // deliberate drag to tilt
+                if (!this._is3d()) { this.pan[0] += dx; this.pan[1] += dy; this.draw(); return; }   // 2D = flat, upright plane: drag pans, never tilts or spins
+                if (e.shiftKey) { this.cam.roll += dx * 0.01; this.draw(); return; }                 // in-plane spin (3D only)
                 this.cam.yaw += dx * 0.008; this.cam.pitch = Math.max(-1.45, Math.min(1.45, this.cam.pitch + dy * 0.008));
                 this._updatePersp(); this.draw();
             } else if (pts.size === 2 && pinch) {
                 const [a, b] = [...pts.values()];
                 const d = Math.hypot(a[0] - b[0], a[1] - b[1]), ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
                 this.cam.zoom = Math.max(0.35, Math.min(6, pinch.zoom * d / (pinch.d || 1)));
-                this.cam.roll += (ang - pinch.ang); pinch.ang = ang; moved += 10; this.draw();      // two-finger twist spins the plane
+                if (this._is3d()) this.cam.roll += (ang - pinch.ang); pinch.ang = ang; moved += 10; this.draw();      // two-finger twist spins the plane
             }
         });
         const end = (e) => {
@@ -368,7 +360,6 @@ class ProjectionView {
         let best = null, bd = 18 * 18;
         for (const h of this._hit || []) { const d = (h.sx - x) ** 2 + (h.sy - y) ** 2; if (d < bd) { bd = d; best = h; } }
         this.sel = best && (best.type === 'pt' || best.type === 'live') ? { type: best.type, i: best.i } : null;
-        if (best && best.type === 'feature') { this.spot = best.f; this.bar.querySelector('[data-act=colorby]').value = String(best.f); }
         this.decomp = 0; this._animDecomp();
         this._renderCard(); this.draw();
     }
@@ -413,7 +404,6 @@ class ProjectionView {
         this.ribbon.innerHTML = `<span class="t">variable shifts</span>` + top.map(x =>
             `<span class="chip" data-f="${x.f}"><b>${x.n}</b> <i class="${x.d >= 0 ? 'up' : 'dn'}">${x.d >= 0 ? '+' : ''}${x.d.toFixed(2)}z</i></span>`).join('') +
             `<span class="chip rg"><b style="color:${cl[lead]}">${rn[lead]}</b> <i class="${dp >= 0 ? 'up' : 'dn'}">${dp >= 0 ? '+' : ''}${dp.toFixed(0)} pts</i></span>`;
-        this.ribbon.querySelectorAll('[data-f]').forEach(e => e.addEventListener('click', () => { this.spot = +e.dataset.f; this.bar.querySelector('[data-act=colorby]').value = String(this.spot); this.draw(); }));
     }
 
     // ------------------------------------------------------------ side card: selection, decomposition, displacement
@@ -484,7 +474,6 @@ class ProjectionView {
         const settle = this.morph ? Math.pow(this.morphT || 0, 2) : 1;     // arrows / shapes fade in once points have landed
 
         this._drawGrid(ctx, P, w, h, flatT2);
-        if (this.panel.showEllipsoids) this._drawShapes(ctx, P, settle);
         // points, far to near
         const order = items.map((_, i) => i).filter(i => !items[i].live).map(i => ({ i, s: P(...W(i)) })).sort((a, b) => a.s.z - b.s.z);
         const tl = this._timeline(), cur = tl[this.tpos], tail = new Set(tl.slice(Math.max(0, this.tpos - 6), this.tpos + 1));
@@ -545,48 +534,6 @@ class ProjectionView {
         if (this.mode === 'tsne3d') { const az = P(0, 0, ext * 0.9); ctx.fillText('t-SNE 3', az.sx + 4, az.sy); }
         this._layerNote = layered > 0.1 ? 'Tilted t-SNE 2D: height = time (oldest at the bottom). It is a layering aid, not a third embedding axis.' : '';
     }
-    // ----- regime shapes: projected GMM ellipses (PCA) or KDE 80%-mass regions (t-SNE)
-    _drawShapes(ctx, P, settle) {
-        const v = this.viz, sp = this.panel.bubbleSpread - 1, cent = this._centroids();
-        if (this.mode === 'pca2d') {
-            const [a, b] = this.pair, c = [0, 1, 2].find(k => k !== a && k !== b), k = this.k;
-            for (const g of v.pca_meta.gmm_proj) {
-                const r = g.regime; if (this.hidden.has(r)) continue; const col = vtHexRgb(v.regime_colors[r]);
-                const s2 = [[g.cov[a][a], g.cov[a][b]], [g.cov[b][a], g.cov[b][b]]];
-                const tr = s2[0][0] + s2[1][1], det = s2[0][0] * s2[1][1] - s2[0][1] * s2[1][0], disc = Math.sqrt(Math.max(0, tr * tr / 4 - det));
-                const l1 = tr / 2 + disc, l2 = Math.max(1e-12, tr / 2 - disc), th = 0.5 * Math.atan2(2 * s2[0][1], s2[0][0] - s2[1][1]);
-                const rs = this.panel.fittedShape ? [Math.sqrt(l1) * 1.5, Math.sqrt(l2) * 1.5] : (() => { const q = Math.sqrt(Math.sqrt(l1 * l2)) * 1.5; return [q, q]; })();
-                const m = [g.mu[a] + cent[r][0] * sp, g.mu[b] + cent[r][1] * sp, g.mu[c] + cent[r][2] * sp];
-                const pts = []; for (let t = 0; t <= 48; t++) { const u = t / 48 * Math.PI * 2, x = rs[0] * Math.cos(u), y = rs[1] * Math.sin(u);
-                    pts.push(P((m[0] + x * Math.cos(th) - y * Math.sin(th)) * k, (m[1] + x * Math.sin(th) + y * Math.cos(th)) * k, m[2] * k)); }
-                ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p.sx, p.sy) : ctx.moveTo(p.sx, p.sy)); ctx.closePath();
-                ctx.fillStyle = vtRgb(col, 0.10 * settle); ctx.fill(); ctx.strokeStyle = vtRgb(col, 0.55 * settle); ctx.lineWidth = 1; ctx.stroke();
-                const top = pts.reduce((m2, p) => p.sy < m2.sy ? p : m2, pts[0]);
-                this._labels.push({ x: top.sx, y: top.sy - 4, text: v.regime_names[r], color: v.regime_colors[r], pri: 3, bold: true });
-            }
-        } else if (this.mode === 'tsne2d') {
-            const kde = this._kde(); if (!kde) return;
-            for (const r of Object.keys(kde)) {
-                if (this.hidden.has(+r)) continue;
-                const reg = kde[r], col = vtHexRgb(v.regime_colors[r]), k = this.k;
-                const s0 = [cent[r][0] * sp, cent[r][1] * sp];
-                ctx.fillStyle = vtRgb(col, 0.11 * settle);
-                for (const q of reg.cells) { const A = P((q[0] + s0[0]) * k, (q[1] + s0[1]) * k, 0), B = P((q[2] + s0[0]) * k, (q[1] + s0[1]) * k, 0), C = P((q[2] + s0[0]) * k, (q[3] + s0[1]) * k, 0), D = P((q[0] + s0[0]) * k, (q[3] + s0[1]) * k, 0);
-                    ctx.beginPath(); ctx.moveTo(A.sx, A.sy); ctx.lineTo(B.sx, B.sy); ctx.lineTo(C.sx, C.sy); ctx.lineTo(D.sx, D.sy); ctx.closePath(); ctx.fill(); }
-                ctx.strokeStyle = vtRgb(col, 0.5 * settle); ctx.lineWidth = 1; ctx.beginPath();
-                for (const e of reg.edges) { const A = P((e[0] + s0[0]) * k, (e[1] + s0[1]) * k, 0), B = P((e[2] + s0[0]) * k, (e[3] + s0[1]) * k, 0); ctx.moveTo(A.sx, A.sy); ctx.lineTo(B.sx, B.sy); }
-                ctx.stroke();
-                const lp = P((reg.cx + s0[0]) * k, (reg.top + s0[1]) * k, 0);
-                this._labels.push({ x: lp.sx, y: lp.sy - 4, text: v.regime_names[r], color: v.regime_colors[r], pri: 3, bold: true });
-            }
-        } else { // tsne3d: no honest 3D region from points alone, so label the regime medians
-            const k = this.k; const med = [0, 1, 2, 3, 4].map(r => { const ps = v.points.filter(p => p.dominant === r); if (ps.length < 3) return null;
-                const m = [0, 1, 2].map(c => { const s = ps.map(p => p.tsne3[c]).sort((a, b) => a - b); return s[s.length >> 1]; }); return m; });
-            med.forEach((m, r) => { if (!m) return; const p = P((m[0] + cent[r][0] * sp) * k, (m[1] + cent[r][1] * sp) * k, (m[2] + cent[r][2] * sp) * k);
-                this._labels.push({ x: p.sx, y: p.sy - 4, text: v.regime_names[r], color: v.regime_colors[r], pri: 3, bold: true }); });
-        }
-    }
-    // 80%-mass kernel density region per dominant regime (display geometry computed from the points themselves)
     _kde() {
         if (this._kdeCache) return this._kdeCache;
         const v = this.viz, out = {}, G = 44;
