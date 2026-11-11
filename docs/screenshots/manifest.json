@@ -476,48 +476,6 @@
   "fixture_id": "synthetic-v1"
  },
  {
-  "file": "phase-5/SPX_single_pca2d_layout_desktop.png",
-  "commit": "4abe57e",
-  "timestamp": "2026-11-10T11:29:51-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-5/SPX_single_tsne2d_layout_desktop.png",
-  "commit": "4abe57e",
-  "timestamp": "2026-11-10T11:29:52-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-5/SPX_single_pca2d_layout_mobile.png",
-  "commit": "4abe57e",
-  "timestamp": "2026-11-10T11:29:57-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-5/SPX_single_tsne2d_layout_mobile.png",
-  "commit": "4abe57e",
-  "timestamp": "2026-11-10T11:29:59-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-3/SPX_single_pca2d_controls_desktop.png",
-  "commit": "4abe57e",
-  "timestamp": "2026-11-10T11:30:04-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-3/SPX_single_pca2d_controls_mobile.png",
-  "commit": "4abe57e",
-  "timestamp": "2026-11-10T11:30:08-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
   "file": "phase-10/VIX_volatility_section_desktop.png",
   "commit": "4abe57e",
   "timestamp": "2026-11-10T11:30:13-0500",
@@ -528,48 +486,6 @@
   "file": "phase-10/VIX_volatility_section_mobile.png",
   "commit": "4abe57e",
   "timestamp": "2026-11-10T11:30:16-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-12/pricing_analysis_desktop.png",
-  "commit": "4abe57e",
-  "timestamp": "2026-11-10T11:30:21-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-12/pricing_analysis_mobile.png",
-  "commit": "4abe57e",
-  "timestamp": "2026-11-10T11:30:23-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-13/chart_factors_top_desktop.png",
-  "commit": "4abe57e",
-  "timestamp": "2026-11-10T11:30:40-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-13/chart_factors_sections_desktop.png",
-  "commit": "4abe57e",
-  "timestamp": "2026-11-10T11:30:41-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-13/chart_factors_top_desktop2x.png",
-  "commit": "4abe57e",
-  "timestamp": "2026-11-10T11:31:00-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-13/chart_factors_sections_desktop2x.png",
-  "commit": "4abe57e",
-  "timestamp": "2026-11-10T11:31:00-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
@@ -598,6 +514,90 @@
   "file": "phase-7/NQ_family_pca2d_grouped_arrows_mobile.png",
   "commit": "4abe57e",
   "timestamp": "2026-11-10T11:31:41-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-5/SPX_single_pca2d_layout_desktop.png",
+  "commit": "64259fd",
+  "timestamp": "2026-11-10T23:56:11-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-5/SPX_single_tsne2d_layout_desktop.png",
+  "commit": "64259fd",
+  "timestamp": "2026-11-10T23:56:13-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-5/SPX_single_pca2d_layout_mobile.png",
+  "commit": "64259fd",
+  "timestamp": "2026-11-10T23:56:17-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-5/SPX_single_tsne2d_layout_mobile.png",
+  "commit": "64259fd",
+  "timestamp": "2026-11-10T23:56:19-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-3/SPX_single_pca2d_controls_desktop.png",
+  "commit": "64259fd",
+  "timestamp": "2026-11-10T23:56:23-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-3/SPX_single_pca2d_controls_mobile.png",
+  "commit": "64259fd",
+  "timestamp": "2026-11-10T23:56:28-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-12/pricing_analysis_desktop.png",
+  "commit": "64259fd",
+  "timestamp": "2026-11-10T23:56:58-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-12/pricing_analysis_mobile.png",
+  "commit": "64259fd",
+  "timestamp": "2026-11-10T23:57:00-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-13/chart_factors_top_desktop.png",
+  "commit": "64259fd",
+  "timestamp": "2026-11-10T23:57:44-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-13/chart_factors_sections_desktop.png",
+  "commit": "64259fd",
+  "timestamp": "2026-11-10T23:57:45-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-13/chart_factors_top_desktop2x.png",
+  "commit": "64259fd",
+  "timestamp": "2026-11-10T23:58:03-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-13/chart_factors_sections_desktop2x.png",
+  "commit": "64259fd",
+  "timestamp": "2026-11-10T23:58:04-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  }

@@ -52,7 +52,7 @@ class SurfacePanel {
 
         this.canvas3d = document.createElement('canvas');
         this.leftPane.appendChild(this.canvas3d);
-        this.cam = new Cam3D({ yaw: this.opts.surfaceStyle === 'bloomberg' ? 0.62 : 0.32, pitch: 0.5, zoom: 1, radius: 62 });
+        this.cam = new Cam3D({ yaw: this.opts.surfaceStyle === 'bloomberg' ? 0.62 : 0.32, pitch: 0.5, zoom: 1.22, radius: 62 });
         this.cam.center = [0, 6, 0];
         attachOrbit(this.canvas3d, this.cam, {
             onChange: () => this._draw3d(),
@@ -378,17 +378,20 @@ class SurfacePanel {
             const label = document.createElement('div');
             label.className = 'vt-mini-chart-label';
             label.textContent = dte + ' DTE cross-section';
-            const canvas = document.createElement('canvas');
-            wrap.appendChild(label); wrap.appendChild(canvas);
+            const body = document.createElement('div'); body.className = 'vt-mini-body';
+            const canvas = document.createElement('canvas'); body.appendChild(canvas);
+            wrap.appendChild(label); wrap.appendChild(body);
             this.rightPane.appendChild(wrap);
             this._renderMiniChart(canvas, row, dte);
-            this._miniCharts.push({ canvas, dte });
+            this._miniCharts.push({ canvas, dte, row });
         }
+        // re-measure once the grid has settled (rows/columns resolve after insertion)
+        requestAnimationFrame(() => { for (const m of this._miniCharts) if (m.canvas.isConnected) this._renderMiniChart(m.canvas, m.row, m.dte); });
     }
 
     _renderMiniChart(canvas, row, dte) {
         const g = this._grid;
-        const { ctx, w, h } = vtSizeCanvas(canvas, canvas.parentElement);
+        const { ctx, w, h } = vtSizeCanvas(canvas, canvas.parentElement, 60, 50);
         ctx.clearRect(0, 0, w, h);
         ctx.fillStyle = '#0a0b0e'; ctx.fillRect(0, 0, w, h);
         const padL = 44, padB = 16, padT = 6, padR = 10;

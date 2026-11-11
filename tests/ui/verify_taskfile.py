@@ -33,5 +33,12 @@ with sync_playwright() as p:
     chk(pg.evaluate("document.documentElement.scrollWidth") <= 1702, "no horizontal scroll")
     for gone in ["vt-pca-controls", "colorby"]: chk(pg.locator(f'.{gone}, [data-act={gone}]').count() == 0, f"removed {gone}")
     chk(pg.evaluate("window.__pca.bubbleSpread === 2.8 && window.__pca.vectorSpread === 1.0"), "bubbles 2.8 / vectors 1.0 locked")
+    # fit: 2D cross-section charts stay inside their cards at several widths; no horizontal scroll
+    for W in (1366, 1920):
+        pg.set_viewport_size({"width": W, "height": 900}); pg.wait_for_timeout(500)
+        for n in ("vt-page-greeks", "vt-page-pricing"):
+            pg.click(f'[data-page="{n}"]'); pg.wait_for_timeout(1200)
+            bad = pg.evaluate("[...document.querySelectorAll('.vt-page.active .vt-mini-chart')].filter(m=>{const r=m.getBoundingClientRect(),c=m.querySelector('canvas').getBoundingClientRect();return c.right>r.right+1||c.bottom>r.bottom+1}).length")
+            chk(bad == 0, f"{n} {W}px: {bad} clipped 2D charts"); chk(pg.evaluate("document.documentElement.scrollWidth") <= W + 2, f"{n} {W}px horizontal scroll")
     chk(not errs, f"page errors {errs}"); b.close()
 print("FAILURES:", F or "none")

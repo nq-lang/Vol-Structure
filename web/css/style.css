@@ -608,3 +608,15 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--white)
   .vt-page.vt-has-side.active { grid-template-columns: minmax(0, 1fr); }
   .vt-page-side { position: static; max-height: none; border-left: 0; border-top: 1px solid var(--border); }
 }
+/* fit: mini charts size from their own body box (no padded-container overflow); grid tracks may shrink */
+.vt-split-right { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.vt-mini-chart { min-width: 0; overflow: hidden; }
+.vt-mini-body { position: relative; flex: 1 1 0; min-height: 0; min-width: 0; }
+.vt-mini-body canvas { position: absolute; inset: 0; display: block; }
+/* fit: biplot height follows the viewport; legend is compact and never covers the cloud centre */
+#vt-section-pca-regime .vt-pca-biplot-wrap { height: clamp(430px, calc(100vh - 270px), 760px); }
+.vt-pca-legend { width: 212px; padding: 7px 9px; font-size: 9.5px; }
+.vt-pca-legend .ft { display: none; }
+/* fit: section titles and row labels stay on one line; descriptions wrap beside them */
+.vt-page h2, .vt-row-label { white-space: nowrap; }
+.vt-page h2 + *, .vt-row-label + * { min-width: 0; }

@@ -31,7 +31,7 @@ class Cam3D {
         let [x1, y2, z2] = this.rotate(x, y, z);
         if (this.roll) { const cr = Math.cos(this.roll), sr = Math.sin(this.roll); const xr = x1 * cr - y2 * sr; y2 = x1 * sr + y2 * cr; x1 = xr; }
         const D = this.radius * 3.2;
-        const base = (Math.min(w, h) / (2 * this.radius)) * 0.92 * this.zoom;
+        const base = (Math.min(w * 0.78, h) / (2 * this.radius)) * 0.92 * this.zoom;
         const pf = D / Math.max(D - z2, D * 0.15);
         const s = base * (1 + (pf - 1) * this.persp);
         return { sx: w / 2 + x1 * s, sy: h / 2 - y2 * s, z: z2, s };
@@ -96,9 +96,9 @@ function attachOrbit(canvas, cam, cb = {}) {
 }
 
 // Small helpers shared by renderers.
-function vtSizeCanvas(canvas, container) {
+function vtSizeCanvas(canvas, container, minW = 200, minH = 160) {
     const r = container.getBoundingClientRect();
-    const w = Math.max(200, r.width), h = Math.max(160, r.height);
+    const w = Math.max(minW, Math.floor(r.width)), h = Math.max(minH, Math.floor(r.height));
     const dpr = 2;
     if (canvas.width !== w * dpr || canvas.height !== h * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
     canvas.style.width = w + 'px'; canvas.style.height = h + 'px';

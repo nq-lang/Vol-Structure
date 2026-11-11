@@ -24,6 +24,8 @@
         // initial: model channels, regime / PCA / viz, volatility card, then the Family NQ scope (lens + multibook + chart factors + sidebar + model card)
         modelFeed(); call('onInsightUpdate', js(pay.insight)); call('onRegimeStatic', js(reg.static)); call('onRegimeLive', js(reg.live)); call('onRegimeViz', js(viz.static)); viz.live.forEach(l => call('onRegimeVizLive', js(l.viz))); call('onVolatility', js(vol));
         if (window.VT_SCOPE) { scope = { mode: 'family', ticker: 'NQ', family: 'NQ' }; window.VT_SCOPE.apply('NQ', 'family', 'NQ'); } else startKey();
+        // a ticker change clears the projection views; re-deliver the regime projection data so 2D / t-SNE modes are populated
+        call('onRegimeViz', js(viz.static)); viz.live.forEach(l => call('onRegimeVizLive', js(l.viz)));
         // continuous updates: every 3 s model values drift, regime/PCA live ticks cycle, and every 4th tick the chart receives its next model epoch (loops when the fixture is exhausted)
         setInterval(() => {
             tick++; modelFeed(1 + 0.08 * Math.sin(tick / 3) + 0.03 * Math.sin(tick * 1.7)); const l = viz.live[tick % viz.live.length]; call('onRegimeVizLive', js(l.viz)); call('onRegimeLive', js(reg.live));
