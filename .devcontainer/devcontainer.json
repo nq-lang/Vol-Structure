@@ -5,6 +5,6 @@
   "portsAttributes": {
     "8080": { "label": "Vol Structure terminal (synthetic demo)", "onAutoForward": "openBrowser", "protocol": "http" }
   },
-  "postStartCommand": "nohup python3 tools/serve_demo.py --port 8080 > /tmp/vol-structure-demo.log 2>&1 &",
+  "postStartCommand": "python3 tools/start_demo.py",
   "customizations": { "vscode": { "extensions": ["ms-vscode.cpptools"] } }
 }
