@@ -476,48 +476,6 @@
   "fixture_id": "synthetic-v1"
  },
  {
-  "file": "phase-10/VIX_volatility_section_desktop.png",
-  "commit": "4abe57e",
-  "timestamp": "2026-11-10T11:30:13-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-10/VIX_volatility_section_mobile.png",
-  "commit": "4abe57e",
-  "timestamp": "2026-11-10T11:30:16-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-7/NQ_family_model_card_desktop.png",
-  "commit": "4abe57e",
-  "timestamp": "2026-11-10T11:31:36-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-7/NQ_family_pca2d_grouped_arrows_desktop.png",
-  "commit": "4abe57e",
-  "timestamp": "2026-11-10T11:31:37-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-7/NQ_family_model_card_mobile.png",
-  "commit": "4abe57e",
-  "timestamp": "2026-11-10T11:31:39-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-7/NQ_family_pca2d_grouped_arrows_mobile.png",
-  "commit": "4abe57e",
-  "timestamp": "2026-11-10T11:31:41-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
   "file": "phase-5/SPX_single_pca2d_layout_desktop.png",
   "commit": "64259fd",
   "timestamp": "2026-11-10T23:56:11-0500",
@@ -598,6 +556,48 @@
   "file": "phase-13/chart_factors_sections_desktop2x.png",
   "commit": "64259fd",
   "timestamp": "2026-11-10T23:58:04-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-7/NQ_family_model_card_desktop.png",
+  "commit": "31440b6",
+  "timestamp": "2026-11-12T02:54:00-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-7/NQ_family_pca2d_grouped_arrows_desktop.png",
+  "commit": "31440b6",
+  "timestamp": "2026-11-12T02:54:02-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-7/NQ_family_model_card_mobile.png",
+  "commit": "31440b6",
+  "timestamp": "2026-11-12T02:54:04-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-7/NQ_family_pca2d_grouped_arrows_mobile.png",
+  "commit": "31440b6",
+  "timestamp": "2026-11-12T02:54:05-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-10/VIX_volatility_section_desktop.png",
+  "commit": "31440b6",
+  "timestamp": "2026-11-12T02:54:22-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-10/VIX_volatility_section_mobile.png",
+  "commit": "31440b6",
+  "timestamp": "2026-11-12T02:54:26-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  }

@@ -348,11 +348,8 @@ class SurfacePanel {
         if (!best) { this.hoverBox.style.display = 'none'; return; }
         const g = this._grid;
         const big = Math.abs(best.v) >= 1e4 || (Math.abs(best.v) < 1e-2 && best.v !== 0);
-        this.hoverBox.style.display = 'block';
-        this.hoverBox.innerHTML = `<div><span class="hr">${this.opts.xLabel}</span> ${g.xs[best.i]}</div>` +
-            (this.lens && this.lens.toFut && this.lens.toFut(g.xs[best.i]) != null ? `<div><span class="hr">${this.lens.anchor}</span> ${this.lens.toFut(g.xs[best.i]).toFixed(2)}</div>` : '') +
-            `<div><span class="hr">DTE</span> ${g.ys[best.j]}</div>` +
-            `<div><span class="hr">${this.opts.zLabel}</span> ${big ? best.v.toExponential(3) : best.v.toFixed(4)}</div>`;
+        const fut = this.lens && this.lens.toFut && this.lens.toFut(g.xs[best.i]) != null ? this.lens.toFut(g.xs[best.i]) : null;
+        this._showHover([[this.opts.xLabel, String(g.xs[best.i])], fut != null ? [this.lens.anchor, fut.toFixed(2)] : null, ['DTE', String(g.ys[best.j])], [this.opts.zLabel, this._fmtZ(best.v), best.v]], (() => { const r = this.canvas3d.getBoundingClientRect(); return { clientX: r.left + x, clientY: r.top + y }; })());
         this._highlightCrossSection(g.ys[best.j], g.xs[best.i]);
     }
 
@@ -466,17 +463,21 @@ class SurfacePanel {
             const r = canvas.getBoundingClientRect();
             const mx = (e.clientX - r.left);
             const i = Math.round(((mx - padL) / plotW) * (g.xs.length - 1));
-            if (i >= 0 && i < g.xs.length) this._hoverFromMini(dte, g.xs[i], row[i]);
+            if (i >= 0 && i < g.xs.length) { canvas._hi = i; this._renderMiniChart(canvas, row, dte); this._hoverFromMini(dte, g.xs[i], row[i], e); }
         };
+        canvas.onmouseleave = () => { canvas._hi = undefined; this.hoverBox.style.display = 'none'; this._renderMiniChart(canvas, row, dte); };
+        if (canvas._hi !== undefined) { const hx = padL + (canvas._hi / (g.xs.length - 1)) * plotW; ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(hx, padT); ctx.lineTo(hx, padT + plotH); ctx.stroke(); ctx.setLineDash([]); ctx.beginPath(); ctx.arc(hx, sy(row[canvas._hi]), 3.5, 0, 7); ctx.fillStyle = row[canvas._hi] < 0 ? '#e04b4b' : '#2fd06a'; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.stroke(); }
     }
 
-    _hoverFromMini(dte, x, v) {
-        this.hoverBox.style.display = 'block';
-        const big = Math.abs(v) >= 1e4 || (Math.abs(v) < 1e-2 && v !== 0);
-        this.hoverBox.innerHTML = `<div><span class="hr">${this.opts.xLabel}</span> ${x}</div>` +
-            `<div><span class="hr">DTE</span> ${dte}</div>` +
-            `<div><span class="hr">${this.opts.zLabel}</span> ${big ? v.toExponential(3) : v.toFixed(4)}</div>`;
+    _fmtZ(v) { const big = Math.abs(v) >= 1e4 || (Math.abs(v) < 1e-2 && v !== 0); return (this.opts.signed !== false && v > 0 ? '+' : v < 0 ? '\u2212' : '') + (big ? Math.abs(v).toExponential(3) : Math.abs(v).toFixed(4)); }
+    // value readout that follows the pointer; positive values green, negative red (colour only for sign)
+    _showHover(rows, ev) {
+        const bx = this.hoverBox; bx.className = 'vt-hover-box vt-hover-big'; bx.style.display = 'block';
+        bx.innerHTML = rows.filter(Boolean).map(r => `<div><span class="hr">${r[0]}</span><b${r[2] !== undefined && this._signedSeries() ? ' class="' + (r[2] > 0 ? 'v-bull' : r[2] < 0 ? 'v-bear' : '') + '"' : ''}>${r[1]}</b></div>`).join('');
+        if (ev) { const bw = bx.offsetWidth, bh = bx.offsetHeight; let x = ev.clientX + 16, y = ev.clientY + 14; if (x + bw > innerWidth - 6) x = ev.clientX - bw - 16; if (y + bh > innerHeight - 6) y = ev.clientY - bh - 14; bx.style.left = Math.max(4, x) + 'px'; bx.style.top = Math.max(4, y) + 'px'; }
     }
+    _signedSeries() { return this.opts.signed !== false; }
+    _hoverFromMini(dte, x, v, ev) { this._showHover([[this.opts.xLabel, String(x)], ['DTE', String(dte)], [this.opts.zLabel, this._fmtZ(v), v]], ev); }
 
     _highlightCrossSection() { /* reserved: could scroll/flash the matching mini chart */ }
 }

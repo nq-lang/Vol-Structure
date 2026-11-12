@@ -392,3 +392,8 @@ T2-5 hedging, T2-6 vol/risk, T2-7 multibook_v1, T2-8 scoped LLM layer, cross-boo
 - Chart Factors: full width; heatmap, strike lens, Intraday/Swing level cards (Valid until, Distance/P(touch)/Fed by, Invalidated by, playbook with approach/trigger/why). Hedge flow table in the requested order plus merged reference table. Live Depth/stream layer removed; candles/heat/levels/forensics legend always on; readout shows strike, futures, nearest strike, Greek exposures only.
 - PCA: bubbles 2.8, vectors 1.0 locked (controls hidden), feature pulls always on, regime bubbles / fitted shape / Color by removed; 2D is a flat upright plane (pan only).
 - Tests: verify_taskfile.py added; verify_lens/cards/riskblocks/bubbles and the stream tests removed with their features.
+
+## PCA / t-SNE rebuild + hover readouts
+- PCA and t-SNE are the only two tabs; each shows the interactive 3D model (rotate, zoom, reset, PNG; grid planes, ticked axes with variance %) beside the flat upright 2D plane (axes, ticks, labelled variables; drag pans, wheel zooms). Same points in both panes, hover rings the point in both.
+- Locked: regime clouds x2.8, loading vectors x1.0, feature pulls always on, regime-only colouring. pca_views.js removed (variable table, replay scrubber and pair selector went with it).
+- Surface / 2D hover readouts: larger, follow the pointer, mini-chart crosshair marker; positive values green, negative red. verify_pca_dual.py replaces the old view tests.

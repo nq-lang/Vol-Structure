@@ -620,3 +620,28 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--white)
 /* fit: section titles and row labels stay on one line; descriptions wrap beside them */
 .vt-page h2, .vt-row-label { white-space: nowrap; }
 .vt-page h2 + *, .vt-row-label + * { min-width: 0; }
+/* PCA / t-SNE: 3D on the left, flat 2D on the right */
+.vt-pca-biplot-wrap, #vt-section-pca-regime .vt-pca-biplot-wrap { height: clamp(430px, 64vh, 700px) !important; }
+.vt-pca-biplot { position: absolute; inset: 0; }
+.vt-pca-dual { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 6px; padding: 8px; }
+.vt-pca-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.vt-pca-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 10px; position: static !important; width: auto !important; padding: 0 !important; background: none !important; border: 0 !important; }
+.vt-pca-legend .row { cursor: pointer; color: var(--text, #dfe4ec); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+.vt-pca-legend .row.off { opacity: .35; text-decoration: line-through; }
+.vt-pca-legend .row i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.vt-pca-panes { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.vt-pca-pane { position: relative; min-height: 0; min-width: 0; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+.vt-pca-pane canvas { position: absolute; inset: 0; display: block; }
+.vt-pca-pane .vt-pane-tag { position: absolute; left: 8px; top: 6px; z-index: 2; font-size: 10px; letter-spacing: .08em; color: var(--grey); }
+.vt-pca-pane .vt-view-modebar { position: absolute; right: 6px; top: 6px; z-index: 2; display: flex; gap: 3px; }
+.vt-pca-tip { position: absolute; z-index: 5; display: none; pointer-events: none; }
+@media (max-width: 900px) { .vt-pca-panes { grid-template-columns: minmax(0, 1fr); grid-template-rows: 1fr 1fr; } .vt-pca-biplot-wrap { height: 820px !important; } }
+.vt-pca-pane .vt-view-modebar { position: absolute !important; right: 6px !important; top: 6px !important; left: auto !important; bottom: auto !important; width: auto !important; height: auto !important; padding: 0 !important; flex-direction: row !important; background: none !important; border: 0 !important; }
+.vt-pca-pane .vt-view-modebar button { width: auto; min-width: 22px; height: 20px; padding: 0 6px; font-size: 10px; line-height: 18px; }
+.vt-pca-dual { padding-bottom: 30px; }
+.vt-pca-explained-variance { left: 12px !important; bottom: 6px !important; background: none !important; padding: 0 !important; max-width: calc(100% - 24px); }
+/* surface / 2D hover readout: larger, follows the pointer; green = positive, red = negative */
+.vt-hover-box.vt-hover-big { position: fixed; top: auto; right: auto; z-index: 60; font-size: 12px; line-height: 1.55; padding: 8px 11px; min-width: 170px; border-color: rgba(255,255,255,.22); box-shadow: 0 4px 14px rgba(0,0,0,.6); font-variant-numeric: tabular-nums; }
+.vt-hover-box.vt-hover-big > div { display: flex; justify-content: space-between; gap: 18px; }
+.vt-hover-box.vt-hover-big b { font-weight: 600; text-align: right; }
+.pos { color: var(--green); } .neg { color: var(--red); }

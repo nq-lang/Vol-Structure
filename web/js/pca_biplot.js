@@ -1,301 +1,211 @@
-// pca_biplot.js — implements the supplied "PCA bubbles and vectors" display
-// spec in full:
-//   Part A: regime bubbles are wireframe ELLIPSOIDS built from each regime's
-//           fitted 3x3 covariance (center + 3 scaled semi-axes), never
-//           placeholder spheres, and every bubble carries a persistent label
-//           (rendered every frame, not just on hover).
-//   Part B: feature loading vectors are arrows from the origin. Scaling
-//           convention is fixed and never mixed: points are plotted as raw
-//           PCA scores, every arrow is multiplied by ONE shared constant
-//           (arrow_scale, sent by the server) -- so the live point decomposes
-//           EXACTLY into the sum of the per-feature pull vectors also sent by
-//           the server. The "per-feature pulls" overlay draws that exact
-//           decomposition for the live observation, toggleable.
-//   Part C: reading protocol / acceptance checks -- see the inline notes next
-//           to each piece of the acceptance checklist below.
+// pca_biplot.js - PCA / t-SNE regime model. Two tabs only (PCA, t-SNE); each shows the interactive 3D model on the
+// left and its flat, upright 2D counterpart on the right, drawn from the same points so a point hovered in one pane
+// is ringed in the other. Display parameters are locked: regime clouds spread x2.8, loading vectors x1.0, feature
+// pulls always on, colouring by regime only. Data: regime_viz (points with pca / tsne2 / tsne3 + posterior), the
+// regime static payload (regimes, loadings, arrow_scale, explained variance) and the live regime read.
 class PcaBiplotPanel {
     constructor(container) {
         this.container = container;
-        this.staticData = null;
-        this.liveData = null;
-        this.trail = [];
-        this.showPulls = true;
-        // locked display parameters (no controls): per-regime point clouds are spread at 2.8x, loading vectors at exactly 1.0x
-        this.bubbleSpread = 2.8;
-        this.vectorSpread = 1.0;
+        this.staticData = null; this.liveData = null; this.viz = null;
+        this.trail = [];            // live PCA trail [pc1,pc2,pc3]
+        this.liveViz = [];          // live t-SNE entries {tsne2, tsne3, posterior}
+        this.mode = 'pca';
+        this.bubbleSpread = 2.8;    // locked
+        this.vectorSpread = 1.0;    // locked
+        this.hidden = new Set(); this.hover = -1;
+        this.cam = new Cam3D({ yaw: 0.62, pitch: 0.42, zoom: 1, radius: 13 });
+        this.z2 = 1; this.pan2 = [0, 0];
 
-        this.root = document.createElement('div');
-        this.root.style.cssText = 'position:relative;width:100%;height:100%;';
-        container.appendChild(this.root);
-
-        this.canvas = document.createElement('canvas');
-        this.root.appendChild(this.canvas);
-
-        this.cam = new Cam3D({ yaw: 0.38, pitch: 0.40, zoom: 1, radius: 13 });
-        attachOrbit(this.canvas, this.cam, {
-            onChange: () => this.draw(),
-            onDoubleTap: () => { this.cam.reset(); this.draw(); },
-            onTap: (x, y) => this._tap(x, y),
-        });
-
-        this.views = null; // ProjectionView, created below once the overlay rows exist
-        this.legend = document.createElement('div');
-        this.legend.className = 'vt-pca-toggle-row';
-        this.root.appendChild(this.legend);
-        // view selector (visualization task): PCA 3D is the unchanged baseline; the others are display-only views
-        this.mode = 'pca3d';
-        this.legend.insertAdjacentHTML('afterbegin', `<span class="vt-view-tabs" role="tablist">
-            <button class="vt-view-tab active" data-m="pca3d">PCA 3D</button><button class="vt-view-tab" data-m="pca2d">PCA 2D</button>
-            <button class="vt-view-tab" data-m="tsne2d">t-SNE 2D</button><button class="vt-view-tab" data-m="tsne3d">t-SNE 3D</button></span>`);
-        this.legend.querySelectorAll('.vt-view-tab').forEach(b => b.addEventListener('click', () => this.setMode(b.dataset.m)));
-
-        this.views = new ProjectionView(this);
-        this.legendBox = document.createElement('div');
-        this.legendBox.className = 'vt-pca-legend';
-        this.root.appendChild(this.legendBox);
-
-        this.tooltip = document.createElement('div');
-        this.tooltip.className = 'vt-hover-box';
-        this.root.appendChild(this.tooltip);
-
-        window.addEventListener('resize', () => { this._frame(); this.draw(); });
+        const root = this.root = document.createElement('div'); root.className = 'vt-pca-dual'; container.appendChild(root);
+        root.innerHTML = `<div class="vt-pca-head"><span class="vt-view-tabs" role="tablist"><button class="vt-view-tab active" data-m="pca">PCA</button><button class="vt-view-tab" data-m="tsne">t-SNE</button></span><span class="vt-pca-legend"></span></div>
+            <div class="vt-pca-panes"><div class="vt-pca-pane" data-p="3d"><span class="vt-pane-tag">3D</span></div><div class="vt-pca-pane" data-p="2d"><span class="vt-pane-tag">2D</span></div></div>
+            <div class="vt-hover-box vt-pca-tip"></div>`;
+        this.legendBox = root.querySelector('.vt-pca-legend'); this.tooltip = root.querySelector('.vt-pca-tip');
+        this.p3 = root.querySelector('[data-p="3d"]'); this.p2 = root.querySelector('[data-p="2d"]');
+        this.c3 = document.createElement('canvas'); this.c2 = document.createElement('canvas'); this.p3.appendChild(this.c3); this.p2.appendChild(this.c2);
+        for (const [p, k] of [[this.p3, 3], [this.p2, 2]]) p.insertAdjacentHTML('beforeend', `<span class="vt-view-modebar"><button data-a="in" title="Zoom in">+</button><button data-a="out" title="Zoom out">&minus;</button><button data-a="home" title="Reset view">&#8962;</button><button data-a="png" title="Download PNG">PNG</button></span>`);
+        root.querySelectorAll('.vt-view-tab').forEach(b => b.addEventListener('click', () => this.setMode(b.dataset.m)));
+        this._bindModebar(this.p3, 3); this._bindModebar(this.p2, 2);
+        attachOrbit(this.c3, this.cam, { onChange: () => this._draw3(), onDoubleTap: () => { this.cam.reset(); this._draw3(); }, onHover: (x, y) => this._hover(3, x, y) });
+        this._bind2D();
+        this.c3.addEventListener('pointerleave', () => this._unhover()); this.c2.addEventListener('pointerleave', () => this._unhover());
+        if (window.ResizeObserver) new ResizeObserver(() => this.draw()).observe(container);
+        this.legendBox.addEventListener('click', (e) => { const el = e.target.closest('[data-r]'); if (!el || e.detail > 1) return; const r = +el.dataset.r, n = this._regs().length;
+            this.hidden.has(r) ? this.hidden.delete(r) : this.hidden.add(r); if (this.hidden.size >= n) this.hidden.clear(); this.draw(); });
+        this.legendBox.addEventListener('dblclick', (e) => { const el = e.target.closest('[data-r]'); if (!el) return; const r = +el.dataset.r;
+            this.hidden = new Set(this._regs().map((_, i) => i).filter(i => i !== r)); this.draw(); });
     }
 
-    // Bubble geometry. Default = ROUND: a sphere whose volume equals the regime's fitted
-    // ellipsoid (r = cube root of the product of the three fitted radii), so size still shows
-    // how spread out the regime is but the shape is never a flat disc. 'Fitted Shape' returns
-    // the true covariance ellipsoid (orthonormal axes, one radius each).
-    _bubbleAxes(e) {
-        const r = Math.cbrt(Math.max(1e-9, e.axes[0][3] * e.axes[1][3] * e.axes[2][3]));
-        return [[1, 0, 0, r], [0, 1, 0, r], [0, 0, 1, r]];
-    }
-
-    // Offset applied to everything belonging to regime `r` in the exploded view.
-    _shift(r) {
-        const e = (this.staticData?.ellipsoids || []).find(x => x.regime === r);
-        if (!e) return [0, 0, 0];
-        const k = this.bubbleSpread - 1;
-        return [e.center[0] * k, e.center[1] * k, e.center[2] * k];
-    }
-    _liveRegime() {
-        const name = this.liveData?.predicted_regime;
-        const e = (this.staticData?.ellipsoids || []).find(x => x.name === name);
-        return e ? e.regime : -1;
-    }
-    _vscale() { return (this.staticData?.arrow_scale || 1) * this.vectorSpread; }
-
-    // Auto-fit: choose the camera radius so the structure's projected extents fill the
-    // box in BOTH dimensions (a wide box gets a wide cloud, not a small island in the
-    // middle). Computed at the home orientation + current spread, and again on resize;
-    // it does not change while the user rotates, so the view never pulses.
-    _frame() {
-        const d = this.staticData; if (!d) return;
-        const r = this.container.getBoundingClientRect();
-        const w = Math.max(300, r.width), h = Math.max(240, r.height);
-        const tmp = new Cam3D({ yaw: this.cam.home.yaw, pitch: this.cam.home.pitch });
-        // px-per-world-unit that fits the structure at a given (bubble, vector) spread
-        const fit = (bs, vsf) => {
-            let xs = 0.5, ys = 0.5;
-            const take = (x, y, z) => { const v = tmp.rotate(x, y, z); xs = Math.max(xs, Math.abs(v[0])); ys = Math.max(ys, Math.abs(v[1])); };
-            const sh = (reg) => { const e = (d.ellipsoids || []).find(q => q.regime === reg); return e ? [e.center[0] * (bs - 1), e.center[1] * (bs - 1), e.center[2] * (bs - 1)] : [0, 0, 0]; };
-            for (const p of d.points || []) { const s = sh(p.regime); take(p.pc1 + s[0], p.pc2 + s[1], p.pc3 + s[2]); }
-            for (const e of d.ellipsoids || []) {
-                const s = sh(e.regime);
-                for (const a of this._bubbleAxes(e)) for (const sg of [-1, 1])
-                    take(e.center[0] + s[0] + sg * a[0] * a[3], e.center[1] + s[1] + sg * a[1] * a[3], e.center[2] + s[2] + sg * a[2] * a[3]);
-            }
-            const vs = (d.arrow_scale || 1) * vsf;
-            for (const l of d.loadings || []) take(l.pc1 * vs, l.pc2 * vs, l.pc3 * vs);
-            return 0.80 * Math.min((w / 2) / xs, (h / 2) / ys);
-        };
-        // Fit to the current spread, but never shrink below 72% of the 1x scale: a spread slider
-        // must visibly pull things APART, not just re-zoom them back to the same on-screen gap.
-        // (At the extremes an outer point may leave the box -- wheel/pinch zooms out.)
-        const want = Math.max(fit(this.bubbleSpread, this.vectorSpread), 0.72 * fit(1, 1));
-        this.cam.radius = Math.max(3, Math.min(w, h) * 0.92 / (2 * want));
-    }
-
-    setStatic(data) {
-        this.staticData = data;
-        this._frame();
-        this.cam.home.zoom = this.cam.zoom = 1;
-        this.draw();
-    }
-
-    updateLive(data) {
-        this.liveData = data;
-        this.trail.push([data.pca_coords.pc1, data.pca_coords.pc2, data.pca_coords.pc3]);
-        this.draw();
-    }
-
-    _renderLegend() {
-        const d = this.staticData; if (!d) return;
-        const prob = {}; for (const q of this.liveData?.probabilities || []) prob[q.name] = q.p;
-        const n = {}; for (const pt of d.points || []) n[pt.regime] = (n[pt.regime] || 0) + 1;
-        const rows = (d.regimes || []).map((rg, i) => ({ rg, i, p: prob[rg.name], n: n[i] || 0 }))
-            .sort((a, b) => (b.p ?? -1) - (a.p ?? -1));
-        this.legendBox.innerHTML = '<div class="hd">Regimes</div>' + rows.map(r => `
-            <div class="row ${this.views && this.views.hidden.has(r.i) ? 'off' : ''}" data-r="${r.i}" title="click: show/hide this regime (2D views) - double-click: isolate"><span class="dot" style="background:${r.rg.color}"></span>
-            <span class="nm">${r.rg.name}</span><span class="n">n=${r.n}</span>
-            <span class="pr" style="color:${r.rg.color}">${r.p === undefined ? '' : Math.round(r.p * 100) + '%'}</span></div>`).join('') +
-            '<div class="ft">modebar: zoom / pan / reset / PNG · drag to rotate · wheel / pinch to zoom · double-tap resets · tap a bubble, arrow or the white dot to inspect</div>';
-        if (this._legendBound || !this.views) return; this._legendBound = true;   // delegated: rows are re-rendered on every update
-        const V = this.views, nReg = () => ((this.staticData || {}).regimes || []).length;
-        this.legendBox.addEventListener('click', (e) => { const el = e.target.closest('.row[data-r]'); if (!el || e.detail > 1) return; const r = +el.dataset.r;
-            V.hidden.has(r) ? V.hidden.delete(r) : V.hidden.add(r); if (V.hidden.size >= nReg()) V.hidden.clear(); this._renderLegend(); V.draw(); });
-        this.legendBox.addEventListener('dblclick', (e) => { const el = e.target.closest('.row[data-r]'); if (!el) return; const r = +el.dataset.r;
-            V.hidden = new Set(Array.from({ length: nReg() }, (_, i) => i).filter(i => i !== r)); this._renderLegend(); V.draw(); });
-        this.legendBox.style.cursor = 'pointer';
-    }
-
+    // ---------------------------------------------------------------- data in
+    setStatic(d) { this.staticData = d; this.draw(); }
+    updateLive(d) { this.liveData = d; if (d.pca_coords) { this.trail.push([d.pca_coords.pc1, d.pca_coords.pc2, d.pca_coords.pc3]); if (this.trail.length > 60) this.trail.shift(); } this.draw(); }
+    setViz(v) { this.viz = v; this._cache = null; this.draw(); }
+    updateViz(v) { this.liveViz.push(v); if (this.liveViz.length > 60) this.liveViz.shift(); this.draw(); }
+    resetForTicker() { this.trail = []; this.liveViz = []; this.liveData = null; this.hover = -1; this._cache = null; this.draw(); }
     setMode(m) {
-        if (m === this.mode) return;
-        const prev = this.mode; this.mode = m;
-        this.legend.querySelectorAll('.vt-view-tab').forEach(b => b.classList.toggle('active', b.dataset.m === m));
-        const ev = document.getElementById('vt-pca-explained-variance');
-        if (m === 'pca3d') {
-            this.views.leave(() => { this.canvas.style.display = 'block'; if (ev) ev.style.display = ''; this.draw(); });
-        } else {
-            if (ev) ev.style.display = 'none';
-            this.views.enter(m, prev === 'pca3d');
-            this.canvas.style.display = 'none';
-        }
+        if (m === this.mode) return; this.mode = m; this._cache = null; this.z2 = 1; this.pan2 = [0, 0]; this.cam.reset();
+        this.root.querySelectorAll('.vt-view-tab').forEach(b => b.classList.toggle('active', b.dataset.m === m));
+        const ev = document.getElementById('vt-pca-explained-variance'); if (ev) ev.style.display = m === 'pca' ? '' : 'none';
+        this.draw();
     }
-    setViz(v) { this.views.setViz(v); }
-    updateViz(v) { this.views.pushLive(v, this.liveData?.pca_coords); }
-    resetForTicker() { this.trail = []; this.liveData = null; this.views.reset(); this._renderLegend(); this.draw(); }
-
-    draw() {
-        if (!this.staticData) return;
-        this._renderLegend();
-        if (this.views.active) { this.views.draw(); return; }
-        const { ctx, w, h } = vtSizeCanvas(this.canvas, this.container);
-        ctx.clearRect(0, 0, w, h);
-        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, w, h);
-        const P = (x, y, z) => this.cam.project(x, y, z, w, h);
-        this._hit = [];
-
-        this._drawAxes(ctx, P);
-        this._drawPoints(ctx, P);
-        this._drawArrows(ctx, P);
-        if (this.showPulls && this.liveData) this._drawPulls(ctx, P);
-        this._drawLiveDot(ctx, P);
+    _regs() { return (this.staticData && this.staticData.regimes) || (this.viz && this.viz.regime_names.map((n, i) => ({ name: n, color: this.viz.regime_colors[i] }))) || []; }
+    _var() { const e = this.staticData && this.staticData.explained_variance; return e ? [e.pc1, e.pc2, e.pc3] : null; }
+    _axisNames() {
+        if (this.mode === 'tsne') return ['t-SNE 1', 't-SNE 2', 't-SNE 3'];
+        const v = this._var(); return ['PC1', 'PC2', 'PC3'].map((n, i) => v ? `${n} (${(v[i] * 100).toFixed(1)}%)` : n);
     }
 
-    _drawAxes(ctx, P) {
-        const L = this.cam.radius * 0.92;
-        const axes = [{ d: [1, 0, 0], label: 'PC1' }, { d: [0, 1, 0], label: 'PC2' }, { d: [0, 0, 1], label: 'PC3' }];
-        ctx.font = '11px monospace';
-        for (const ax of axes) {
-            const a = P(0, 0, 0), b = P(ax.d[0] * L, ax.d[1] * L, ax.d[2] * L);
-            ctx.strokeStyle = 'rgba(160,170,185,0.4)'; ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke();
-            ctx.fillStyle = 'rgba(180,190,205,0.75)'; ctx.fillText(ax.label, b.sx + 3, b.sy);
-        }
+    // ---------------------------------------------------------------- geometry (display coords = raw coords + regime centroid x (spread-1))
+    _geo() {
+        if (!this.viz) return null;
+        const key = this.mode + this.viz.points.length + ':' + this.liveViz.length + ':' + this.trail.length + (this.liveData ? this.liveData.predicted_regime : '');
+        if (this._cache && this._cache.key === key) return this._cache;
+        const pca = this.mode === 'pca', sp = this.bubbleSpread - 1, nR = this._regs().length || 5;
+        const raw3 = p => pca ? p.pca : p.tsne3, raw2 = p => pca ? [p.pca[0], p.pca[1]] : p.tsne2;
+        const cen = (get, d) => { const s = Array.from({ length: nR }, () => new Array(d + 1).fill(0)); for (const p of this.viz.points) { const c = get(p), r = s[p.dominant]; for (let k = 0; k < d; k++) r[k] += c[k]; r[d]++; } return s.map(r => r[d] ? r.slice(0, d).map(x => x / r[d]) : new Array(d).fill(0)); };
+        const c3 = cen(raw3, 3), c2 = cen(raw2, 2);
+        const sh = (c, k, r, d) => c.map((x, i) => x + (k[r] ? k[r][i] : 0) * sp);
+        const pts = this.viz.points.map((p, i) => ({ i, r: p.dominant, a3: sh(raw3(p), c3, p.dominant), a2: sh(raw2(p), c2, p.dominant), raw: pca ? p.pca : p.tsne3, p }));
+        let live = null;
+        if (pca && this.liveData && this.liveData.pca_coords) { const q = this.liveData.pca_coords, regs = this._regs(), r = Math.max(0, regs.findIndex(x => x.name === this.liveData.predicted_regime)); const v = [q.pc1, q.pc2, q.pc3];
+            live = { r, a3: sh(v, c3, r), a2: sh([v[0], v[1]], c2, r), trail3: this.trail.map(t => sh(t, c3, r)), trail2: this.trail.map(t => sh([t[0], t[1]], c2, r)) }; }
+        else if (!pca && this.liveViz.length) { const L = this.liveViz[this.liveViz.length - 1], r = L.posterior.indexOf(Math.max(...L.posterior));
+            live = { r, a3: sh(L.tsne3, c3, r), a2: sh(L.tsne2, c2, r), trail3: this.liveViz.map(l => sh(l.tsne3, c3, r)), trail2: this.liveViz.map(l => sh(l.tsne2, c2, r)) }; }
+        const sc = (this.staticData && this.staticData.arrow_scale || 1) * this.vectorSpread;
+        const VL = this.viz.pca_meta && this.viz.pca_meta.loadings, grp = this.viz.feature_group || [];
+        const arrows = !pca ? [] : VL ? VL.map((l, i) => ({ name: this.viz.feature_names[i], short: this.viz.feature_short[i], g: grp[i] || 'anchor', v: [l[0] * sc, l[1] * sc, l[2] * sc] }))
+            : this.staticData ? (this.staticData.loadings || []).map(l => ({ name: l.name, short: l.short || l.name, g: 'anchor', v: [l.pc1 * sc, l.pc2 * sc, l.pc3 * sc] })) : [];
+        const pulls = pca && this.liveData ? (this.liveData.feature_contributions || []).slice().sort((a, b) => Math.hypot(...b.pull) - Math.hypot(...a.pull)).slice(0, 6).filter(c => Math.hypot(...c.pull) > 0.02).map(c => ({ name: c.name, short: c.name.split(' ')[0] === 'Net' ? 'GEX' : (c.short || c.name), v: c.pull.map(x => x * sc) })) : [];
+        const E = [1e-9, 1e-9, 1e-9], take = a => a.forEach((x, k) => { E[k] = Math.max(E[k], Math.abs(x)); });
+        pts.forEach(p => take(p.a3)); arrows.forEach(a => take(a.v)); pulls.forEach(a => take(a.v)); if (live) { take(live.a3); live.trail3.forEach(take); }
+        const E2 = [1e-9, 1e-9]; pts.forEach(p => { E2[0] = Math.max(E2[0], Math.abs(p.a2[0])); E2[1] = Math.max(E2[1], Math.abs(p.a2[1])); });
+        arrows.forEach(a => { E2[0] = Math.max(E2[0], Math.abs(a.v[0])); E2[1] = Math.max(E2[1], Math.abs(a.v[1])); });
+        pulls.forEach(a => { E2[0] = Math.max(E2[0], Math.abs(a.v[0])); E2[1] = Math.max(E2[1], Math.abs(a.v[1])); });
+        if (live) { E2[0] = Math.max(E2[0], Math.abs(live.a2[0])); E2[1] = Math.max(E2[1], Math.abs(live.a2[1])); live.trail2.forEach(t => { E2[0] = Math.max(E2[0], Math.abs(t[0])); E2[1] = Math.max(E2[1], Math.abs(t[1])); }); }
+        return (this._cache = { key, pts, live, arrows, pulls, E, E2 });
+    }
+    _col(r) { const g = this._regs()[r]; return g ? g.color : '#999'; }
+    _fmt(v, d = 2) { const a = Math.abs(v); return (v < 0 ? '−' : v > 0 ? '+' : '') + (a >= 100 ? a.toFixed(0) : a.toFixed(d)); }
+    _sgn(v) { return v > 0 ? '#2fd06a' : v < 0 ? '#e04b4b' : '#9aa0aa'; }
+    _ticks(lo, hi, n = 6) {
+        const span = hi - lo, raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag, st = (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * mag;
+        const out = []; for (let v = Math.ceil(lo / st) * st; v <= hi + 1e-9; v += st) out.push(Math.abs(v) < st * 1e-6 ? 0 : v); return { out, st };
+    }
+    _tf(v, st) { const d = st >= 1 ? 0 : Math.min(3, Math.ceil(-Math.log10(st))); return (v < 0 ? '−' : '') + Math.abs(v).toFixed(d); }
+
+    draw() { this._renderLegend(); this._draw3(); this._draw2(); }
+    _renderLegend() {
+        const regs = this._regs(), prob = {}; for (const q of (this.liveData && this.liveData.probabilities) || []) prob[q.name] = q.p;
+        this.legendBox.innerHTML = regs.map((rg, i) => `<span class="row${this.hidden.has(i) ? ' off' : ''}" data-r="${i}" title="click: show/hide - double-click: isolate"><i style="background:${rg.color}"></i>${rg.name}${prob[rg.name] !== undefined ? ` <b style="color:${rg.color}">${Math.round(prob[rg.name] * 100)}%</b>` : ''}</span>`).join('');
     }
 
-    _drawPoints(ctx, P) {
-        const pts = (this.staticData.points || []).map(p => {
-            const sh = this._shift(p.regime);
-            const s = P(p.pc1 + sh[0], p.pc2 + sh[1], p.pc3 + sh[2]);
-            const regime = (this.staticData.regimes || [])[p.regime] || { color: '#999' };
-            return { ...s, color: regime.color };
-        });
-        pts.sort((a, b) => a.z - b.z);
-        for (const p of pts) { ctx.fillStyle = p.color; ctx.globalAlpha = 0.75; ctx.fillRect(p.sx - 1.6, p.sy - 1.6, 3.2, 3.2); }
-        ctx.globalAlpha = 1;
+    // ---------------------------------------------------------------- 3D pane
+    _draw3() {
+        const G = this._geo(); const { ctx, w, h } = vtSizeCanvas(this.c3, this.p3, 120, 120); ctx.clearRect(0, 0, w, h); ctx.fillStyle = '#05070a'; ctx.fillRect(0, 0, w, h);
+        this._hit3 = []; if (!G) return;
+        const S = 8.6 / Math.max(G.E[0], G.E[1], G.E[2]), pad = 1.06, ex = G.E[0] * S * pad, ey = G.E[2] * S * pad, ez = G.E[1] * S * pad;   // world: x = axis 1, y(up) = axis 3, z = axis 2
+        const W = d => [d[0] * S, d[2] * S, d[1] * S], P = (x, y, z) => this.cam.project(x, y, z, w, h);
+        const cp = (x, y, z) => P(x, y, z);
+        const wallX = P(-ex, 0, 0).z < P(ex, 0, 0).z ? -ex : ex, wallZ = P(0, 0, -ez).z < P(0, 0, ez).z ? -ez : ez, nearX = -wallX, nearZ = -wallZ;
+        const tx = this._ticks(-ex / S, ex / S), ty = this._ticks(-ey / S, ey / S), tz = this._ticks(-ez / S, ez / S);
+        ctx.lineWidth = 1;
+        const quad = (a, b, c, d, fill) => { ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.lineTo(c.sx, c.sy); ctx.lineTo(d.sx, d.sy); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = 'rgba(200,210,225,0.22)'; ctx.stroke(); };
+        quad(cp(-ex, -ey, -ez), cp(ex, -ey, -ez), cp(ex, -ey, ez), cp(-ex, -ey, ez), 'rgba(255,255,255,0.035)');         // floor
+        quad(cp(wallX, -ey, -ez), cp(wallX, -ey, ez), cp(wallX, ey, ez), cp(wallX, ey, -ez), 'rgba(255,255,255,0.025)'); // side wall
+        quad(cp(-ex, -ey, wallZ), cp(ex, -ey, wallZ), cp(ex, ey, wallZ), cp(-ex, ey, wallZ), 'rgba(255,255,255,0.025)'); // back wall
+        ctx.strokeStyle = 'rgba(200,210,225,0.10)';
+        const ln = (a, b) => { ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke(); };
+        for (const t of tx.out) { const x = t * S; ln(cp(x, -ey, -ez), cp(x, -ey, ez)); ln(cp(x, -ey, wallZ), cp(x, ey, wallZ)); }
+        for (const t of tz.out) { const z = t * S; ln(cp(-ex, -ey, z), cp(ex, -ey, z)); ln(cp(wallX, -ey, z), cp(wallX, ey, z)); }
+        for (const t of ty.out) { const y = t * S; ln(cp(wallX, y, -ez), cp(wallX, y, ez)); ln(cp(-ex, y, wallZ), cp(ex, y, wallZ)); }
+        // tick labels + axis titles on the near edges
+        ctx.font = '10px monospace'; ctx.fillStyle = '#9aa3b2'; ctx.textAlign = 'center';
+        const names = this._axisNames(), ctr = P(0, 0, 0);
+        for (const t of tx.out) { const q = cp(t * S, -ey, nearZ); ctx.fillText(this._tf(t, tx.st), q.sx, q.sy + 13); }
+        for (const t of tz.out) { const q = cp(nearX, -ey, t * S); ctx.fillText(this._tf(t, tz.st), q.sx + (q.sx > ctr.sx ? 12 : -12), q.sy + 11); }
+        let lc = null; for (const sx of [-ex, ex]) for (const sz of [-ez, ez]) { const q = cp(sx, -ey, sz); if (!lc || q.sx < lc.q.sx) lc = { q, sx, sz }; }
+        ctx.textAlign = 'right'; for (const t of ty.out) { const q = cp(lc.sx, t * S, lc.sz); ctx.fillText(this._tf(t, ty.st), q.sx - 5, q.sy + 3); }
+        ctx.font = '11px monospace'; ctx.fillStyle = '#d5dbe6';
+        const title = (txt, a, rot) => { const dx = a.sx - ctr.sx, dy = a.sy - ctr.sy, l = Math.hypot(dx, dy) || 1, x = a.sx + dx / l * 30, y = a.sy + dy / l * 26; ctx.save(); ctx.translate(x, y); if (rot) ctx.rotate(-Math.PI / 2); ctx.textAlign = 'center'; ctx.fillText(txt, 0, 0); ctx.restore(); };
+        title(names[0], cp(0, -ey, nearZ)); title(names[1], cp(nearX, -ey, 0)); title(names[2], cp(lc.sx, 0, lc.sz), true);
+        // arrows from the origin (PCA): loading vectors, then the live feature pulls
+        const o = P(0, 0, 0);
+        const byLen = G.arrows.slice().sort((a, b) => Math.hypot(...b.v) - Math.hypot(...a.v)), lab = new Set(byLen.slice(0, 9).map(a => a.name));
+        for (const a of G.arrows) { const t = P(...W(a.v)); this._arrow(ctx, o, t, a.g === 'cross_book' ? 'rgba(45,212,191,0.8)' : 'rgba(230,235,245,0.55)', 1.2); if (lab.has(a.name)) { ctx.font = '10px monospace'; ctx.fillStyle = a.g === 'cross_book' ? '#5eead4' : '#eef2f7'; ctx.textAlign = 'left'; ctx.fillText(a.short, t.sx + 4, t.sy - 3); } this._hit3.push({ sx: t.sx, sy: t.sy, kind: 'feat', a }); }
+        for (const a of G.pulls) { const t = P(...W(a.v)); this._arrow(ctx, o, t, 'rgba(255,196,92,0.95)', 1.8); ctx.font = 'bold 10px monospace'; ctx.fillStyle = '#ffc45c'; ctx.textAlign = 'left'; ctx.fillText(a.short, t.sx + 4, t.sy + 10); }
+        // points far -> near
+        const pp = G.pts.filter(p => !this.hidden.has(p.r)).map(p => ({ p, q: P(...W(p.a3)) })).sort((a, b) => a.q.z - b.q.z);
+        for (const { p, q } of pp) { const rr = 2.2 + 0.9 * Math.min(1.6, q.s / 18); ctx.beginPath(); ctx.arc(q.sx, q.sy, rr, 0, 7); ctx.fillStyle = this._col(p.r); ctx.globalAlpha = 0.88; ctx.fill(); ctx.globalAlpha = 1; ctx.strokeStyle = 'rgba(0,0,0,0.75)'; ctx.lineWidth = 0.8; ctx.stroke(); this._hit3.push({ sx: q.sx, sy: q.sy, kind: 'pt', p }); }
+        this._live(ctx, G, d => P(...W(d)), 3); this._ring(ctx, G, d => P(...W(d)), 3);
+        ctx.textAlign = 'left';
+    }
+    _arrow(ctx, a, b, col, lw) { ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke(); const ang = Math.atan2(b.sy - a.sy, b.sx - a.sx); ctx.beginPath(); ctx.moveTo(b.sx, b.sy); ctx.lineTo(b.sx - 7 * Math.cos(ang - 0.35), b.sy - 7 * Math.sin(ang - 0.35)); ctx.lineTo(b.sx - 7 * Math.cos(ang + 0.35), b.sy - 7 * Math.sin(ang + 0.35)); ctx.closePath(); ctx.fill(); }
+    _live(ctx, G, T, k) {
+        const L = G.live; if (!L) return; const tr = (k === 3 ? L.trail3 : L.trail2).map(T);
+        if (tr.length > 1) { ctx.strokeStyle = this.liveData && this.liveData.directional_bias_bullish === false ? 'rgba(224,75,75,0.9)' : 'rgba(47,208,106,0.9)'; ctx.lineWidth = 1.6; ctx.beginPath(); tr.forEach((q, i) => i ? ctx.lineTo(q.sx, q.sy) : ctx.moveTo(q.sx, q.sy)); ctx.stroke(); }
+        const s = T(k === 3 ? L.a3 : L.a2); ctx.beginPath(); ctx.arc(s.sx, s.sy, 7, 0, 7); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fill(); ctx.beginPath(); ctx.arc(s.sx, s.sy, 4, 0, 7); ctx.fillStyle = '#fff'; ctx.fill();
+        (k === 3 ? this._hit3 : this._hit2).push({ sx: s.sx, sy: s.sy, kind: 'live' });
+    }
+    _ring(ctx, G, T, k) { if (this.hover < 0) return; const p = G.pts[this.hover]; if (!p || this.hidden.has(p.r)) return; const q = T(k === 3 ? p.a3 : p.a2); ctx.beginPath(); ctx.arc(q.sx, q.sy, 8, 0, 7); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.6; ctx.stroke(); }
+
+    // ---------------------------------------------------------------- 2D pane (flat, upright, axes + variables labelled directly)
+    _view2(w, h) {
+        const G = this._geo(), L = 54, R = 14, T = 14, B = 42, pw = w - L - R, ph = h - T - B;
+        const k = Math.min(pw / (2 * G.E2[0]), ph / (2 * G.E2[1])) * 0.94 * this.z2, cx = L + pw / 2 + this.pan2[0], cy = T + ph / 2 + this.pan2[1];
+        return { L, R, T, B, pw, ph, k, cx, cy, X: x => cx + x * k, Y: y => cy - y * k };
+    }
+    _draw2() {
+        const G = this._geo(); const { ctx, w, h } = vtSizeCanvas(this.c2, this.p2, 120, 120); ctx.clearRect(0, 0, w, h); ctx.fillStyle = '#05070a'; ctx.fillRect(0, 0, w, h);
+        this._hit2 = []; if (!G) return;
+        const V = this._view2(w, h), names = this._axisNames();
+        const x0 = (V.L - V.cx) / V.k, x1 = (V.L + V.pw - V.cx) / V.k, y1 = (V.cy - V.T) / V.k, y0 = (V.cy - V.T - V.ph) / V.k;
+        const tx = this._ticks(x0, x1), ty = this._ticks(y0, y1, 5);
+        ctx.save(); ctx.beginPath(); ctx.rect(V.L, V.T, V.pw, V.ph); ctx.clip();
+        ctx.lineWidth = 1; for (const t of tx.out) { ctx.strokeStyle = t === 0 ? 'rgba(200,210,225,0.35)' : 'rgba(200,210,225,0.09)'; ctx.beginPath(); ctx.moveTo(V.X(t), V.T); ctx.lineTo(V.X(t), V.T + V.ph); ctx.stroke(); }
+        for (const t of ty.out) { ctx.strokeStyle = t === 0 ? 'rgba(200,210,225,0.35)' : 'rgba(200,210,225,0.09)'; ctx.beginPath(); ctx.moveTo(V.L, V.Y(t)); ctx.lineTo(V.L + V.pw, V.Y(t)); ctx.stroke(); }
+        const T2 = d => ({ sx: V.X(d[0]), sy: V.Y(d[1]), z: 0, s: 1 }), o = T2([0, 0]);
+        const byLen = G.arrows.slice().sort((a, b) => Math.hypot(a.v[0], a.v[1]) - Math.hypot(b.v[0], b.v[1])).reverse(), lab = new Set(byLen.slice(0, 9).map(a => a.name));
+        for (const a of G.arrows) { const t = T2(a.v); this._arrow(ctx, o, t, a.g === 'cross_book' ? 'rgba(45,212,191,0.8)' : 'rgba(230,235,245,0.55)', 1.2); if (lab.has(a.name)) { ctx.font = '10px monospace'; ctx.fillStyle = a.g === 'cross_book' ? '#5eead4' : '#eef2f7'; ctx.textAlign = 'left'; ctx.fillText(a.short, t.sx + 4, t.sy - 3); } this._hit2.push({ sx: t.sx, sy: t.sy, kind: 'feat', a }); }
+        for (const a of G.pulls) { const t = T2(a.v); this._arrow(ctx, o, t, 'rgba(255,196,92,0.95)', 1.8); ctx.font = 'bold 10px monospace'; ctx.fillStyle = '#ffc45c'; ctx.textAlign = 'left'; ctx.fillText(a.short, t.sx + 4, t.sy + 10); }
+        for (const p of G.pts) { if (this.hidden.has(p.r)) continue; const q = T2(p.a2); ctx.beginPath(); ctx.arc(q.sx, q.sy, 3.6, 0, 7); ctx.fillStyle = this._col(p.r); ctx.globalAlpha = 0.9; ctx.fill(); ctx.globalAlpha = 1; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 0.9; ctx.stroke(); this._hit2.push({ sx: q.sx, sy: q.sy, kind: 'pt', p }); }
+        this._live(ctx, G, T2, 2); this._ring(ctx, G, T2, 2);
+        ctx.restore();
+        ctx.strokeStyle = 'rgba(200,210,225,0.5)'; ctx.strokeRect(V.L + 0.5, V.T + 0.5, V.pw, V.ph);
+        ctx.font = '10px monospace'; ctx.fillStyle = '#9aa3b2'; ctx.textAlign = 'center';
+        for (const t of tx.out) ctx.fillText(this._tf(t, tx.st), V.X(t), V.T + V.ph + 14);
+        ctx.textAlign = 'right'; for (const t of ty.out) ctx.fillText(this._tf(t, ty.st), V.L - 6, V.Y(t) + 3);
+        ctx.font = '11px monospace'; ctx.fillStyle = '#d5dbe6'; ctx.textAlign = 'center'; ctx.fillText(names[0], V.L + V.pw / 2, h - 8);
+        ctx.save(); ctx.translate(13, V.T + V.ph / 2); ctx.rotate(-Math.PI / 2); ctx.fillText(names[1], 0, 0); ctx.restore(); ctx.textAlign = 'left';
+    }
+    _bind2D() {
+        const c = this.c2; c.style.touchAction = 'none'; let drag = null;
+        c.addEventListener('pointerdown', e => { c.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY }; });
+        c.addEventListener('pointermove', e => { if (drag) { this.pan2[0] += e.clientX - drag.x; this.pan2[1] += e.clientY - drag.y; drag = { x: e.clientX, y: e.clientY }; this._draw2(); return; } const r = c.getBoundingClientRect(); this._hover(2, e.clientX - r.left, e.clientY - r.top); });   // flat plane: drag pans, never tilts
+        c.addEventListener('pointerup', () => { drag = null; });
+        c.addEventListener('wheel', e => { e.preventDefault(); this.z2 = Math.max(0.4, Math.min(8, this.z2 * (e.deltaY < 0 ? 1.12 : 1 / 1.12))); this._draw2(); }, { passive: false });
+        c.addEventListener('dblclick', () => { this.z2 = 1; this.pan2 = [0, 0]; this._draw2(); });
+    }
+    _bindModebar(pane, k) {
+        pane.querySelector('.vt-view-modebar').addEventListener('click', e => { const a = e.target.closest('[data-a]'); if (!a) return; const act = a.dataset.a;
+            if (act === 'png') { try { const l = document.createElement('a'); l.download = `regime_${this.mode}_${k}d.png`; l.href = (k === 3 ? this.c3 : this.c2).toDataURL('image/png'); l.click(); } catch (_) {} return; }
+            if (k === 3) { if (act === 'home') this.cam.reset(); else this.cam.zoom = Math.max(0.35, Math.min(6, this.cam.zoom * (act === 'in' ? 1.25 : 0.8))); this._draw3(); }
+            else { if (act === 'home') { this.z2 = 1; this.pan2 = [0, 0]; } else this.z2 = Math.max(0.4, Math.min(8, this.z2 * (act === 'in' ? 1.25 : 0.8))); this._draw2(); } });
     }
 
-    _drawArrows(ctx, P) {
-        const scale = this._vscale();
-        const loadings = this.staticData.loadings || [];
-        // Label only the longest arrows (biggest loadings) to keep the biplot
-        // readable; shorter arrows still draw and are still tap-inspectable.
-        const byLen = loadings.map(l => ({ l, len: Math.hypot(l.pc1, l.pc2, l.pc3) })).sort((a, b) => b.len - a.len);
-        const labelSet = new Set(byLen.slice(0, 9).map(x => x.l.name));
-        for (const l of loadings) {
-            const tip = [l.pc1 * scale, l.pc2 * scale, l.pc3 * scale];
-            const a = P(0, 0, 0), b = P(...tip);
-            ctx.strokeStyle = 'rgba(230,235,245,0.5)'; ctx.lineWidth = 1.2;
-            ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke();
-            this._arrowHead(ctx, a, b, 'rgba(230,235,245,0.65)');
-            if (labelSet.has(l.name)) {
-                ctx.font = '10px monospace'; ctx.fillStyle = '#eef2f7';
-                ctx.fillText(l.short || l.name, b.sx + 3, b.sy - 3);
-            }
-            this._hit.push({ sx: b.sx, sy: b.sy, type: 'feature', data: l });
-        }
+    // ---------------------------------------------------------------- hover (shared by both panes; the hovered point is ringed in both)
+    _hover(k, x, y) {
+        const hits = k === 3 ? this._hit3 : this._hit2; let best = null, bd = 12 * 12;
+        for (const h of hits || []) { const d = (h.sx - x) ** 2 + (h.sy - y) ** 2; if (d < bd) { bd = d; best = h; } }
+        const prev = this.hover; this.hover = best && best.kind === 'pt' ? best.p.i : -1; if (prev !== this.hover) { this._draw3(); this._draw2(); }
+        const tip = this.tooltip; if (!best) { tip.style.display = 'none'; return; }
+        const pane = (k === 3 ? this.p3 : this.p2), pr = pane.getBoundingClientRect(), rr = this.root.getBoundingClientRect();
+        let html = '';
+        if (best.kind === 'pt') { const p = best.p, rg = this._regs()[p.r] || {}, names = this._axisNames().map(n => n.replace(/ \(.*\)/, ''));
+            html = `<div><b style="color:${rg.color}">${rg.name}</b>${p.p.date ? ' · ' + p.p.date : ''}</div>` + p.raw.map((v, i) => `<div class="hr">${names[i]} <b style="color:${this._sgn(v)}">${this._fmt(v)}</b></div>`).join(''); }
+        else if (best.kind === 'feat') { html = `<div><b>${best.a.short}</b></div><div class="hr">${best.a.name}</div>` + best.a.v.map((v, i) => `<div class="hr">PC${i + 1} <b style="color:${this._sgn(v)}">${this._fmt(v)}</b></div>`).join(''); }
+        else { const d = this.liveData || {}; html = `<div><b style="color:${d.predicted_color || '#fff'}">${d.predicted_regime || 'live'}</b></div><div class="hr">current live read</div>`; }
+        tip.innerHTML = html; tip.style.display = 'block'; const left = pr.left - rr.left + x + 14, top = pr.top - rr.top + y - 10;
+        tip.style.left = Math.min(left, rr.width - 190) + 'px'; tip.style.top = Math.max(4, top) + 'px'; tip.style.right = 'auto';
     }
-
-    // Part B overlay: exact per-feature pulls for the live observation, drawn
-    // as a fan from the origin (not chained tip-to-tail -- a chain lets large
-    // offsetting contributions wander far off-canvas even though their VECTOR
-    // SUM is bounded, which is visually misleading). Each arrow here is
-    // exactly standardized_feature[i] * loading[i] * arrow_scale; their sum
-    // is, by construction, the live point -- shown as a dashed sum-check line.
-    _drawPulls(ctx, P) {
-        const scale = this._vscale();
-        const all = this.liveData.feature_contributions || [];
-        const top = all.slice().sort((a, b) => Math.hypot(...b.pull) - Math.hypot(...a.pull)).slice(0, 6);
-        const origin = P(0, 0, 0);
-        for (const c of top) {
-            const mag = Math.hypot(...c.pull);
-            if (mag < 0.02) continue;
-            const tip = P(c.pull[0] * scale, c.pull[1] * scale, c.pull[2] * scale);
-            ctx.strokeStyle = 'rgba(255,196,92,0.9)'; ctx.lineWidth = 1.8;
-            ctx.beginPath(); ctx.moveTo(origin.sx, origin.sy); ctx.lineTo(tip.sx, tip.sy); ctx.stroke();
-            this._arrowHead(ctx, origin, tip, 'rgba(255,196,92,0.95)');
-            ctx.font = 'bold 10px monospace'; ctx.fillStyle = '#ffc45c';
-            ctx.fillText(c.name.split(' ')[0] === 'Net' ? 'GEX' : (c.short || c.name), tip.sx + 3, tip.sy + 10);
-        }
-    }
-
-    _drawLiveDot(ctx, P) {
-        if (this.trail.length > 1) {
-            const sh = this._shift(this._liveRegime());
-            const pts = this.trail.map(p => P(p[0] + sh[0], p[1] + sh[1], p[2] + sh[2]));
-            ctx.strokeStyle = this.liveData?.directional_bias_bullish ? 'rgba(47,208,106,0.9)' : 'rgba(224,75,75,0.9)';
-            ctx.lineWidth = 1.6;
-            ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p.sx, p.sy) : ctx.moveTo(p.sx, p.sy))); ctx.stroke();
-        }
-        if (!this.liveData) return;
-        const { pc1, pc2, pc3 } = this.liveData.pca_coords;
-        const lsh = this._shift(this._liveRegime());
-        const s = P(pc1 + lsh[0], pc2 + lsh[1], pc3 + lsh[2]);
-        ctx.beginPath(); ctx.arc(s.sx, s.sy, 7, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fill();
-        ctx.beginPath(); ctx.arc(s.sx, s.sy, 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#fff'; ctx.fill();
-        this._hit.push({ sx: s.sx, sy: s.sy, type: 'live', data: this.liveData });
-    }
-
-    _arrowHead(ctx, from, to, color) {
-        const ang = Math.atan2(to.sy - from.sy, to.sx - from.sx);
-        const len = 7;
-        ctx.beginPath();
-        ctx.moveTo(to.sx, to.sy);
-        ctx.lineTo(to.sx - len * Math.cos(ang - 0.35), to.sy - len * Math.sin(ang - 0.35));
-        ctx.lineTo(to.sx - len * Math.cos(ang + 0.35), to.sy - len * Math.sin(ang + 0.35));
-        ctx.closePath();
-        ctx.fillStyle = color; ctx.fill();
-    }
-
-    _tap(x, y) {
-        let best = null, bd = 20 * 20;
-        for (const h of this._hit) { const d = (h.sx - x) ** 2 + (h.sy - y) ** 2; if (d < bd) { bd = d; best = h; } }
-        if (!best) { this.tooltip.style.display = 'none'; return; }
-        this.tooltip.style.display = 'block';
-        this.tooltip.style.left = (x + 12) + 'px'; this.tooltip.style.top = (y - 10) + 'px';
-        this.tooltip.style.right = 'auto';
-        if (best.type === 'regime') {
-            const n = (this.staticData.points || []).filter(p => p.regime === best.data.regime).length;
-            this.tooltip.innerHTML = `<div><b style="color:${best.data.color}">${best.data.name}</b></div><div class="hr">n=${n} historical days in this regime</div><div class="hr">regime</div>`;
-        } else if (best.type === 'feature') {
-            const live = this.liveData?.feature_contributions?.find(c => c.name === best.data.name);
-            const mag = live ? Math.hypot(...live.pull).toFixed(3) : 'n/a';
-            this.tooltip.innerHTML = `<div><b>${best.data.short}</b></div><div class="hr">${best.data.name}</div><div class="hr">today's pull magnitude: ${mag}</div>`;
-        } else if (best.type === 'live') {
-            this.tooltip.innerHTML = `<div><b style="color:${best.data.predicted_color}">${best.data.predicted_regime}</b></div><div class="hr">current live read</div>`;
-        }
-    }
+    _unhover() { this.tooltip.style.display = 'none'; if (this.hover >= 0) { this.hover = -1; this._draw3(); this._draw2(); } }
 }
