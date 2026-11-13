@@ -392,212 +392,212 @@
   "fixture_id": "synthetic-v1"
  },
  {
-  "file": "phase-6/SPX_multibook_main_keylevels_desktop.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T00:44:36-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-6/SPX_multibook_main_keylevels_mobile.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T00:44:39-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-7/NQ_family_model_card_desktop.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T00:47:08-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-7/NQ_family_pca2d_grouped_arrows_desktop.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T00:47:09-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-7/NQ_family_model_card_mobile.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T00:47:11-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-7/NQ_family_pca2d_grouped_arrows_mobile.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T00:47:12-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-13/chart_factors_top_desktop.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:53:53-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-13/chart_factors_sections_desktop.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:53:54-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-13/chart_factors_top_desktop2x.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:54:16-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-13/chart_factors_sections_desktop2x.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:54:16-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-8/NQ_family_sidebar_xbook_desktop.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:54:21-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-8/NQ_family_alertbar_main_desktop.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:54:23-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-8/NQ_family_sidebar_xbook_mobile.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:54:26-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
-  "file": "phase-8/NQ_family_alertbar_main_mobile.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:54:27-0500",
-  "data_source": "MOCK",
-  "fixture_id": "synthetic-v1"
- },
- {
   "file": "phase-1/ALL_selector_main_desktop.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:54:49-0500",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T09:59:07-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-1/QQQ_popup_main_desktop.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:54:49-0500",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T09:59:07-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-1/QQQ_multibook_main_desktop.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:54:49-0500",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T09:59:07-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-1/NQ_family_main_desktop.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:54:50-0500",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T09:59:08-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-1/NQ_singlebook_picker_main_desktop.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:54:50-0500",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T09:59:08-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-1/NQ_singlebook_NVDA_main_desktop.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:54:50-0500",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T09:59:08-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-1/ALL_selector_main_mobile.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:54:53-0500",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T09:59:10-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-1/QQQ_popup_main_mobile.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:54:53-0500",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T09:59:11-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-1/QQQ_multibook_main_mobile.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:54:53-0500",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T09:59:11-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-1/NQ_family_main_mobile.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:54:54-0500",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T09:59:11-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-1/NQ_singlebook_picker_main_mobile.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:54:54-0500",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T09:59:11-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-1/NQ_singlebook_NVDA_main_mobile.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:54:54-0500",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T09:59:12-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
-  "file": "phase-12/pricing_analysis_desktop.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:54:58-0500",
+  "file": "phase-6/SPX_multibook_main_keylevels_desktop.png",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T09:59:16-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
-  "file": "phase-12/pricing_analysis_mobile.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:55:01-0500",
+  "file": "phase-6/SPX_multibook_main_keylevels_mobile.png",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T09:59:19-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-8/NQ_family_sidebar_xbook_desktop.png",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T09:59:29-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-8/NQ_family_alertbar_main_desktop.png",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T09:59:30-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-8/NQ_family_sidebar_xbook_mobile.png",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T09:59:33-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-8/NQ_family_alertbar_main_mobile.png",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T09:59:35-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-10/VIX_volatility_section_desktop.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:55:04-0500",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T09:59:38-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  },
  {
   "file": "phase-10/VIX_volatility_section_mobile.png",
-  "commit": "8a46d5f",
-  "timestamp": "2026-11-13T06:55:08-0500",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T09:59:42-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-12/pricing_analysis_desktop.png",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T09:59:46-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-12/pricing_analysis_mobile.png",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T09:59:49-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-13/chart_factors_top_desktop.png",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T10:00:08-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-13/chart_factors_sections_desktop.png",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T10:00:09-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-13/chart_factors_top_desktop2x.png",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T10:00:29-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-13/chart_factors_sections_desktop2x.png",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T10:00:30-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-7/NQ_family_model_card_desktop.png",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T10:01:06-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-7/NQ_family_pca2d_grouped_arrows_desktop.png",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T10:01:07-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-7/NQ_family_model_card_mobile.png",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T10:01:09-0500",
+  "data_source": "MOCK",
+  "fixture_id": "synthetic-v1"
+ },
+ {
+  "file": "phase-7/NQ_family_pca2d_grouped_arrows_mobile.png",
+  "commit": "f75b185",
+  "timestamp": "2026-11-13T10:01:10-0500",
   "data_source": "MOCK",
   "fixture_id": "synthetic-v1"
  }
