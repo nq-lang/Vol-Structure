@@ -68,12 +68,6 @@
                 '<span class="o">' + (off == null ? 'flip n/a' : 'flip ' + sgn(off, 2) + '%') + '</span><span class="z">' + (hz != null && hz > 0 ? Math.round(hz * 100) + '% 0DTE' : '') + '</span>' + (b.vol && b.vol.backwardated ? '<span class="bk">backwardated</span>' : '') + '</div>'; });
         const off = (f.M.books || []).filter(b => !b.included).map(b => '<div class="vt-xb-row off"><span class="n">' + disp(b.id) + '</span><span class="why">excluded: ' + esc(b.reason) + '</span></div>');
         return '<div class="vt-flow-section vt-xb"><div class="vt-flow-section-title">Cross-book &mdash; who is pushing</div>' + rows.join('') + off.join('') + '</div>'; }
-    function scopedCard() {
-        const S = X.scoped; if (!S) return ''; const cur = sc(); if (S.scope.mode !== cur.mode || (cur.mode === 'single' && S.scope.ticker !== cur.ticker)) return '';   // never show a read generated under another scope
-        const lines = String(S.text).split('\n').filter(l => l.trim()), head = lines.filter(l => /^\s*[1-3][.)]/.test(l) || /^MOCK/.test(l)), rest = lines.filter(l => !head.includes(l));
-        return '<div class="vt-flow-section vt-xb-read"><div class="vt-flow-section-title">Scoped read <span class="vt-xb-badge">' + S.scope.mode.replace('_', '-').toUpperCase() + ' &middot; ' + esc(S.scope.family || disp(S.scope.ticker)) + ' &middot; ' + S.scope.books.length + (S.scope.books.length === 1 ? ' book' : ' books') + '</span>' +
-            '<span class="vt-xb-badge ' + (S.validated ? 'ok' : 'warn') + '">' + (S.validated ? 'numbers verified' : 'computed summary (model text rejected)') + '</span></div>' + head.map(l => '<div class="vt-xb-line">' + esc(l) + '</div>').join('') +
-            (rest.length ? '<details><summary>' + rest.length + ' more sections</summary>' + rest.map(l => '<div class="vt-xb-line">' + esc(l) + '</div>').join('') + '</details>' : '') + '<div class="vt-xb-ts">' + esc(S.scope.model_variant) + ' &middot; ' + esc(S.scope.snapshot_ts) + (S.cached ? ' &middot; cached' : '') + '</div></div>'; }
     // ---- B3: dealer Greeks tracked through the session (open -> one hour before the close), interpreted. All numbers/sentences come from the C++ session tracker.
     function spark(pts, key) {
         const W = 260, H = 46, vals = pts.map(p => p[key]).filter(v => v != null); if (vals.length < 2) return '<div class="vt-xb-sp na">only one snapshot so far: no trend line yet</div>';
@@ -95,13 +89,6 @@
             '<div class="vt-xb-line"><b>Vanna &times; charm:</b> ' + esc(S.interaction) + '</div><div class="vt-xb-line"><b>Into the close:</b> ' + esc(S.closing) + '</div>' + (obs ? '<div class="vt-xb-line"><b>Observed (' + esc(obs.window) + '):</b> ' + esc(obs.reading) + '</div>' : '') +
             '<div class="vt-xb-line"><b>Volatility:</b> ' + (window.VT_VOL ? VT_VOL.stripHtml(an) : esc(S.vol)) + '</div><div class="vt-xb-ts">Dealers assumed long calls / short puts (not observed). Window ends one hour before the close; the final hour is the handoff.</div></div>';
     }
-    // C-3: volatility regime reading and vanna / vomma interpretation (shared object from the core)
-    function volCard() {
-        const title = '<div class="vt-flow-section-title">Volatility regime &mdash; vanna &amp; vomma</div>';
-        if (sc().mode === 'single') return ''; if (!lensOn()) return '';
-        const v = VT_LENS.mb && VT_LENS.mb.volctx; if (!v) return '<div class="vt-flow-section vt-xb-vol">' + title + '<div class="vt-xb-na">Unavailable &mdash; no volatility context in the payload.</div></div>';
-        if (!v.ok) return '<div class="vt-flow-section vt-xb-vol">' + title + '<div class="vt-xb-na">Unavailable &mdash; ' + esc(v.reason) + '.</div></div>';
-        return '<div class="vt-flow-section vt-xb-vol">' + title + '<div class="vt-xb-conc">' + esc(v.headline) + '</div><div class="vt-xb-line"><b>Hedging:</b> ' + esc(v.hedge) + '</div><div class="vt-xb-line"><b>Vomma:</b> ' + esc(v.vomma) + '</div>' + (v.divergence ? '<div class="vt-xb-line"><b>VXN vs VIX:</b> ' + esc(v.divergence) + '</div>' : '') + '</div>'; }
     // key strikes with context (what each implies, how long it is valid, conviction) from the Strike Lens intraday cards of the primary book
     function strikeContext() {
         if (!lensOn()) return ''; const L = VT_LENS.lens, s0 = sc(), id = s0.mode === 'family' ? (L.books.filter(b => b.convertible && b.insight && b.insight.intraday.ok).sort((a, b) => 0)[0] || {}).id : s0.ticker, b = id && L.books.find(x => x.id === id);
@@ -110,16 +97,14 @@
     }
     function html() {
         const s = sc(), M = lensOn() ? VT_LENS.mb : null, al = alerts(), lv = levels();
-        const scopeLine = '<div class="vt-xb-scope"><b>' + (s.mode === 'single' ? 'SINGLE-BOOK &middot; ' + disp(s.ticker) : s.mode.replace('_', '-').toUpperCase() + ' &middot; ' + esc(s.family || '') + ' &middot; ' + (M ? M.books.filter(b => b.included).length : 0) + ' books') + '</b>' +
-            '<span>' + (M ? 'confidence ' + Math.round(M.confidence * 100) + '% &middot; ' : '') + (s.mode === 'single' ? 'single_v1' : 'multibook_v1') + '</span></div>';
         const now = '<div class="vt-flow-section vt-xb-now"><div class="vt-flow-section-title">Right now &mdash; ranked</div>' + (al.length ? al.slice(0, 6).map(a => '<div class="vt-xb-al s' + a.sev + '"><span class="tag">' + a.tag + '</span><span class="tx">' + a.text + '</span></div>').join('') : '<div class="vt-placeholder-note">awaiting data</div>') + '</div>';
         const ctl = '<div class="vt-flow-section"><div class="vt-flow-section-title">Key control strikes' + (lensOn() ? ' <small>weighted median across books</small>' : '') + '</div>' + (lv.length ? lv.map(r => '<div class="vt-xb-lv ' + r.tag + '"><span class="n">' + r.name + '</span><span class="p">' + r.text + '</span><span class="d">' + (r.d == null ? '' : sgn(r.d, 2) + '%') + '</span></div>').join('') : '<div class="vt-placeholder-note">awaiting levels</div>') + '</div>';
-        return scopeLine + now + sessionCard() + volCard() + strikeContext() + ctl + crossBook() + scopedCard(); }
+        return now + sessionCard() + strikeContext() + ctl + crossBook(); }
     function bar() {
         const el = document.getElementById('vt-alertbar'); if (!el) return; const al = alerts().filter(a => a.sev >= 2).slice(0, 3);
         el.hidden = !al.length; el.innerHTML = al.length ? '<span class="lbl">RIGHT NOW</span>' + al.map(a => '<span class="al s' + a.sev + '"><b>' + a.tag + '</b> ' + a.text + '</span>').join('') : ''; }
     function refresh() { const el = document.getElementById('vt-sidebar-xb'); if (el) el.innerHTML = html(); bar(); }
-    window.onScopedInsight = p => { X.scoped = typeof p === 'string' ? JSON.parse(p) : p; refresh(); };
+    window.onScopedInsight = p => { X.scoped = typeof p === 'string' ? JSON.parse(p) : p; };   // payload kept for the audit trail; the sidebar no longer renders a scoped-read card
     const prevModel = window.onMultibookModel; window.onMultibookModel = p => { X.model = typeof p === 'string' ? JSON.parse(p) : p; if (prevModel) prevModel(p); refresh(); };
     window.VT_SIDEBAR = { html, refresh, alerts, levels, setRegime: r => { X.regime = r; refresh(); }, state: X };
     window.addEventListener('DOMContentLoaded', () => { if (window.VT_LENS) VT_LENS.listeners.push(refresh); if (window.VT_SCOPE) VT_SCOPE.onChange(refresh); refresh(); });

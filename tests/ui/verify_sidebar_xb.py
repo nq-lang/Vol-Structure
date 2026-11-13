@@ -14,20 +14,19 @@ with sync_playwright() as p:
     for (W, H, vp, dpr) in [(1700, 1000, "desktop", 1), (390, 844, "mobile", 2)]:
         pg = b.new_context(viewport={"width": W, "height": H}, device_scale_factor=dpr).new_page(); errs = []; pg.on("pageerror", lambda e: errs.append(str(e))); shots.load(pg)
         pg.click('[data-page="vt-page-greeks"]'); pg.wait_for_timeout(300)
-        t = pg.inner_text("#vt-sidebar-xb"); chk("SINGLE-BOOK" in t and "single_v1" in t, "single scope line"); chk("Session Greek tracking is a Multi-Book" in t, "single: session tracking stated unavailable, single_v1 unchanged"); chk(pg.locator(".vt-xb-row").count() == 0, "no cross-book block in Single-Book"); chk("NQ" not in t and "ES " not in t, "no futures content in Single-Book sidebar")
+        t = pg.inner_text("#vt-sidebar-xb"); chk(pg.locator(".vt-xb-scope").count() == 0, "scope line removed"); chk("Session Greek tracking is a Multi-Book" in t, "single: session tracking stated unavailable, single_v1 unchanged"); chk(pg.locator(".vt-xb-row").count() == 0, "no cross-book block in Single-Book"); chk("NQ" not in t and "ES " not in t, "no futures content in Single-Book sidebar")
         chk(pg.locator(".vt-xb-al").count() >= 1, "single: ranked alerts from the one book"); chk(pg.locator(".vt-xb-lv").count() >= 1, "single: control strikes from the one book")
-        pg.evaluate("(j)=>window.onScopedInsight(j)", json.dumps(SP["family"])); chk(pg.locator(".vt-xb-read").count() == 0, "a read generated under another scope is never shown")
+        pg.evaluate("(j)=>window.onScopedInsight(j)", json.dumps(SP["family"])); chk(pg.locator(".vt-xb-read").count() == 0, "no scoped-read card")
         # ---- family
         pg.evaluate("(j)=>window.onMultibookModel(j)", json.dumps(CARD)); push(pg, "NQ_family", "family"); pg.evaluate("(j)=>window.onScopedInsight(j)", json.dumps(SP["family"])); pg.wait_for_timeout(300)
-        t = pg.inner_text("#vt-sidebar-xb"); chk("FAMILY" in t and "NQ" in t and "multibook_v1" in t and "confidence" in t, "family scope line")
+        t = pg.inner_text("#vt-sidebar-xb"); chk("multibook_v1" not in t and "confidence" not in t and "scoped read" not in t.lower() and "volatility regime" not in t.lower() and "primary book detail" not in t.lower(), "no scope line / scoped read / volatility regime / primary book detail")
         tags = pg.evaluate("VT_SIDEBAR.alerts().map(a=>a.tag)"); chk({"GAMMA", "ZERO-GAMMA", "HEDGE FLOW"} <= set(tags), f"alerts {tags}")
         st = pg.inner_text("#vt-sidebar-xb"); su = st.lower(); chk("dealer greeks through the session" in su and "charm is" in su and "vanna × charm" in su and "into the close" in su and "as of tue 20 oct 10:10 et" in su and "tracking 09:30 et" in su, "session charm tracking + interaction + as-of/window")
         chk(pg.locator(".vt-xb-sp .l").count() == 1 and pg.locator(".vt-xb-gr").count() >= 3 and pg.locator(".vt-xb-gr.strengthening, .vt-xb-gr.fading, .vt-xb-gr.steady").count() >= 3, "charm series line + per-Greek strengthening/fading")
         chk(pg.locator(".vt-xb-sc").count() >= 3 and "high-exposure strikes" in su, "high-exposure strikes carry verdict/validity context")
         sev = pg.eval_on_selector_all(".vt-xb-al", "e=>e.map(x=>+x.className.match(/s(\\d)/)[1])"); chk(sev == sorted(sev, reverse=True), f"alerts ranked by severity {sev}")
         lv = pg.eval_on_selector_all(".vt-xb-lv .p", "e=>e.map(x=>x.textContent)"); chk(len(lv) >= 3 and all(re.match(r"^NQ \$[\d,]+(\.\d+)?$", x) or re.match(r"^[A-Z/_]+ \$[\d,.]+ / NQ \$[\d,.]+$", x) for x in lv), f"levels {lv}")
-        chk(any(" / NQ $" in x for x in lv), "strike / futures format"); chk(pg.locator(".vt-xb-row:not(.off)").count() == 7, "7 books in cross-book"); chk(pg.locator(".vt-xb-read .vt-xb-badge").count() == 2 and "FAMILY" in pg.inner_text(".vt-xb-read").upper(), "scoped read is scope-badged")
-        chk("numbers verified" in pg.inner_text(".vt-xb-read"), "validation badge"); chk("MOCK DATA" in pg.inner_text(".vt-xb-read"), "mock disclaimer shown")
+        chk(any(" / NQ $" in x for x in lv), "strike / futures format"); chk(pg.locator(".vt-xb-row:not(.off)").count() == 7, "7 books in cross-book")
         shots.shot(pg, 8, "NQ_family_sidebar_xbook", vp, locator="#vt-sidebar")
         # ---- the alert bar is on EVERY page
         for page in ["vt-page-main", "vt-page-pricing", "vt-page-greeks"]:

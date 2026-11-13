@@ -75,22 +75,8 @@
     //      No header prose: the block starts with data. All numbers come from the multibook `hedge` / `session` payloads.
     function hedgeBlock() {
         const h = L.mb && L.mb.hedge; if (!h) return '<div class="vt-lens-empty">Hedge flow unavailable &mdash; no index-convertible books in scope.</div>';
-        const an = L.lens.anchor, S = L.mb.session, P = scopeNow().ticker, fam = famMode();
-        const spot = fam ? L.lens.anchor_px : (P === an ? L.lens.anchor_px : (book(P) || {}).spot), tk = fam ? L.lens.tick : 0.01, tgt = fam ? an : disp(P);
-        const px = v => v == null ? 'n/a' : fmt(v, tk), usd = v => (v < 0 ? '−' : '+') + '$' + (Math.abs(v) / 1e6).toFixed(1) + 'M';
-        const sg = v => (v < 0 ? '−' : '+') + Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 });
+        const S = L.mb.session, ccl = S && S.ok && S.pts.length ? S.pts[S.pts.length - 1].charm_close : null;
         const bs = v => v > 0 ? 'BUY' : v < 0 ? 'SELL' : 'FLAT', c0 = v => v > 0 ? 'pos' : v < 0 ? 'neg' : '';
-        const rows = [];
-        if (S && S.ok) (S.observed || []).forEach(o => rows.push({ st: 'Observed', lab: o.window + ' ' + (o.move_pct >= 0 ? '+' : '−') + Math.abs(o.move_pct).toFixed(2) + '%', price: spot ? px(spot / (1 + o.move_pct / 100)) + ' → ' + px(spot) : '–', when: o.from + '–' + o.to + ' ET', d: o.flow_c, usd: o.flow_notional }));
-        h.shock_pct.forEach((s, i) => { if (s === 0) return; rows.push({ st: 'Projected', lab: tgt + ' ' + (s > 0 ? '+' : '') + s + '%', price: spot ? px(spot * (1 + s / 100)) : 'n/a', when: 'at price', d: h.anchor_contracts[i], usd: h.notional[i] }); });
-        const vr = window.VT_VOL ? VT_VOL.regimeFor(an) : null;
-        [['up', h.vanna_up_c, '+1'], ['dn', h.vanna_dn_c, '−1']].forEach(a => { const live = vr && vr.available && ((a[0] === 'up' && vr.trend > 0) || (a[0] === 'dn' && vr.trend < 0));
-            rows.push({ st: live ? 'Live' : 'Projected', lab: 'IV ' + a[2] + ' pt', price: px(spot), when: live ? 'vol moving' : 'if vol moves', d: a[1], usd: null }); });
-        const ccl = S && S.ok && S.pts.length ? S.pts[S.pts.length - 1].charm_close : null, tc = S && S.ok ? S.to_close_min : -1;
-        if (ccl != null) rows.push({ st: 'Projected', lab: 'Charm to close', price: px(spot), when: tc >= 0 ? (tc >= 90 ? (tc / 60).toFixed(1) + ' h' : tc + ' min') : 'closed', d: ccl, usd: null });
-        rows.push({ st: 'Projected', lab: 'Charm 1 day', price: px(spot), when: '1 day', d: h.charm_1d_c, usd: null });
-        [['+1%', h.zero_dte_up_c], ['−1%', h.zero_dte_dn_c]].forEach(a => rows.push({ st: 'Projected', lab: '0DTE ' + a[0], price: spot ? px(spot * (1 + (a[0] === '+1%' ? 0.01 : -0.01))) : 'n/a', when: 'to expiry', d: a[1], usd: null }));
-        const live = rows.map(r => '<tr><td class="lb">' + esc(r.lab) + '</td><td class="n">' + esc(r.price) + '</td><td><span class="st ' + r.st.toLowerCase() + '">' + r.st + '</span></td><td>' + esc(r.when) + '</td><td class="n ' + c0(r.d) + '">' + bs(r.d) + ' ' + sg(r.d).slice(1) + (r.usd != null && isFinite(r.usd) ? ' <small>' + usd(r.usd) + '</small>' : '') + '</td></tr>').join('');
         const f1 = i => h.anchor_contracts[h.shock_pct.indexOf(i)], up = f1(1), dn = f1(-1), amp = up > 0 && dn < 0, damp = up < 0 && dn > 0, ob = S && S.ok && S.observed && S.observed[0];
         const ref = [['Price shock', 'Dealer re-hedge after a price move', amp ? 'AMPLIFIES: dealers chase' : damp ? 'DAMPS: dealers fade' : 'Asymmetric: ' + bs(up) + ' on +1%, ' + bs(dn) + ' on −1%', amp ? 'neg' : damp ? 'pos' : ''],
             ['Vanna', 'Hedge change per vol point, price flat', (h.vanna_up_c > 0 ? 'Vol up: supports' : 'Vol up: pressures') + ' · ' + (h.vanna_dn_c > 0 ? 'vol down: supports' : 'vol down: pressures'), ''],
@@ -98,8 +84,7 @@
             ['0DTE', 'Same-day expiry hedge', 'Fades at the close', ''],
             ['Observed', 'Realised hedge change in window', ob ? (ob.flow_c > 0 ? 'Net buying so far' : 'Net selling so far') : 'No history yet', ob ? c0(ob.flow_c) : '']]
             .map(r => '<tr><td class="lb">' + r[0] + '</td><td>' + esc(r[1]) + '</td><td class="' + r[3] + '">' + esc(r[2]) + '</td></tr>').join('');
-        return '<div class="vt-hedge-w"><table class="vt-hedge vt-hedge-t vt-compact"><thead><tr><th>Dealer flow</th><th class="n">Price</th><th>Status</th><th>When</th><th class="n">Dealer</th></tr></thead><tbody>' + live + '</tbody></table>' +
-            '<table class="vt-hedge vt-hedge-ref vt-compact"><thead><tr><th>Flow</th><th>What it measures</th><th>Effect on price</th></tr></thead><tbody>' + ref + '</tbody></table></div>';
+        return '<div class="vt-hedge-w"><table class="vt-hedge vt-hedge-ref vt-compact"><thead><tr><th>Flow</th><th>What it measures</th><th>Effect on price</th></tr></thead><tbody>' + ref + '</tbody></table></div>';
     }
     // ---- Entry approach vocabulary (shared by the level cards and the pricing thesis table). Pure function of the card numbers + horizon.
     L.approach = function (c, hz, netG, spot, nextStrike) {
@@ -125,6 +110,27 @@
     function fedBy(c, H) {
         const g = c.votes.filter(v => v.v > 0).map(v => v.greek).filter((x, i, a) => a.indexOf(x) === i), ex2 = (H.expiries || []).map(e => e.dte + 'D ' + Math.round((e.gamma_share || 0) * 100) + '%').join(' · ');
         return '<b>' + esc((g.length ? g.join(' + ') : 'Gamma')) + '</b> <span class="mut">' + esc(ex2) + '</span>'; }
+    // ---- Playbook: Entry / Stop / TP1-TP3 ladder. TP1 = the core's target; TP2 / TP3 = the next structural strikes of this horizon beyond TP1 in the trade direction
+    //      (fallback: 1.5x / 2x the entry-to-TP1 distance, marked "ext"). R = reward / risk to the stop; the scale-out split is a fixed, visible rule (50 / 30 / 20 %).
+    function ladder(c, H) {
+        const pb = c.pb, e = pb.entry_px, st = pb.stop_px, t1 = pb.target_px; if (e == null || st == null || t1 == null) return null;
+        const dir = t1 >= e ? 1 : -1, risk = Math.abs(e - st) || 1e-9, d1 = Math.abs(t1 - e);
+        const beyond = (H.cards || []).filter(o => o !== c && dir * (o.strike - t1) > 1e-9 && o.verdict !== 'Weak').sort((a, b) => dir * (a.strike - b.strike));
+        const mk = (px, o, ext, take) => ({ px, r: Math.abs(px - e) / risk, p: o ? o.p_touch : null, ext, take });
+        const t2 = beyond[0] ? mk(beyond[0].strike, beyond[0], false, '30%') : mk(e + dir * 1.5 * d1, null, true, '30%');
+        const t3 = beyond[1] ? mk(beyond[1].strike, beyond[1], false, '20%') : mk(Math.max(dir * (t2.px - e) + 0.5 * d1, 2 * d1) * dir + e, null, true, '20%');
+        return { dir, e, st, tps: [{ px: t1, r: Math.abs(t1 - e) / risk, p: pb.p_target, ext: false, take: '50%' }, t2, t3] };
+    }
+    function pbHtml(c, ap, H, spot, hz) {
+        const lg = ladder(c, H), pb = c.pb; if (!lg) return '<div class="vt-lens-empty">Playbook unavailable for this level.</div>';
+        const d = v => (v >= 0 ? '+' : '−') + fmt(Math.abs(v), 0.01), pc = v => v == null ? '–' : Math.round(v * 100) + '%';
+        const row = (lab, cls, px, dl, r, p, take, ext) => '<tr class="' + cls + '"><th>' + lab + (ext ? ' <i title="no further structural strike; extended from the entry-to-TP1 distance">ext</i>' : '') + '</th><td class="n">' + fmt(px, 0.01) + '</td><td class="n ' + (cls === 'stop' ? 'neg' : cls === 'tp' ? 'pos' : 'mut') + '">' + (dl == null ? '–' : d(dl)) + '</td><td class="n">' + r + '</td><td class="n">' + pc(p) + '</td><td class="tk">' + take + '</td></tr>';
+        return '<div class="vt-pb"><div class="vt-pb-h"><span class="dir ' + (lg.dir > 0 ? 'up' : 'dn') + '">' + (lg.dir > 0 ? '▲ LONG' : '▼ SHORT') + '</span><b>' + esc(ap.name) + '</b></div>' +
+            '<div class="vt-pb-trig">' + esc(ap.trig) + '</div>' +
+            '<table class="vt-pb-t"><thead><tr><th></th><th class="n">Level</th><th class="n">Δ pts</th><th class="n">R</th><th class="n">P(hit)</th><th>Take</th></tr></thead><tbody>' +
+            row('Entry', 'ent', lg.e, null, '–', null, 'at trigger', false) + row('Stop', 'stop', lg.st, lg.st - lg.e, '−1.0R', null, 'exit all', false) +
+            lg.tps.map((t, i) => row('TP' + (i + 1), 'tp', t.px, t.px - lg.e, t.r.toFixed(1) + 'R', t.p, t.take + (i === 0 ? ' · stop → entry' : ''), t.ext)).join('') + '</tbody></table><div class="vt-pb-f"><i>Hold</i> ' + esc(String(pb.hold).replace(/^hold\s+/i, '')) + '</div></div>';
+    }
     function cardHtml(id, c, i, hz, H, I, next) {
         const vcls = VCLS[c.verdict] || '', ap = L.approach(c, hz, H.net_gamma, I.spot, next), pb = c.pb, spot = I.spot, pts = c.strike - spot, pct = x => Math.round(x * 100) + '%';
         const sg1 = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2);
@@ -132,14 +138,14 @@
             '<div class="vt-lc-b"><div class="vt-lc-v">Valid until <b>' + esc(c.valid_until) + '</b></div>' +
             '<div class="vt-lc-k"><span><i>Distance</i><b class="n">' + sg1(pts) + ' pts &middot; ' + sg1(c.dist_pct) + '%</b></span><span><i>P(touch)</i><b class="n">' + pct(c.p_touch) + '</b></span><span class="fb"><i>Fed by</i>' + fedBy(c, H) + '</span></div>' +
             '<div class="vt-lc-i"><i>Invalidated by</i><ul>' + c.invalidation.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul></div>' +
-            '<table class="vt-lc-pb"><tbody><tr class="ap"><th>Approach</th><td>' + esc(ap.name) + '</td></tr><tr><th>Trigger</th><td>' + esc(ap.trig) + '</td></tr><tr><th>Stop</th><td class="n">' + fmt(pb.stop_px, 0.01) + '</td></tr><tr><th>Target</th><td class="n">' + fmt(pb.target_px, 0.01) + ' &middot; ' + (pb.rr != null ? pb.rr.toFixed(1) + 'R' : '') + ' &middot; P ' + pct(pb.p_target) + '</td></tr><tr><th>Hold</th><td>' + esc(pb.hold) + '</td></tr></tbody></table>' +
+            pbHtml(c, ap, H, spot, hz) +
             '<div class="vt-lc-why">' + esc(ap.why) + '</div></div></details>';
     }
     function horizonCol(id, hz) {
         const I = book(id).insight, H = I[hz], nm = hz === 'intraday' ? 'Intraday' : 'Swing';
         const head = '<div class="vt-lc-h"><b>' + nm + '</b><span class="mut">' + (hz === 'intraday' ? '0–1 DTE' : 'multi-day') + '</span></div>';
         if (!H.ok) return '<div class="vt-lc-col" data-hz="' + hz + '">' + head + '<div class="vt-lens-warn">Unavailable &mdash; ' + esc(H.reason) + '</div></div>';
-        const cs = H.cards, body = cs.length ? cs.map((c, i) => { const nx = cs.filter(o => o !== c && (c.strike > I.spot ? o.strike > c.strike : o.strike < c.strike)).sort((a, b) => Math.abs(a.strike - c.strike) - Math.abs(b.strike - c.strike))[0]; return cardHtml(id, c, i, hz, H, I, nx && nx.strike); }).join('') : '<div class="vt-lens-empty">No structural strike.</div>';
+        const cs = H.cards, body = cs.length ? cs.slice(0, 2).map((c, i) => { const nx = cs.filter(o => o !== c && (c.strike > I.spot ? o.strike > c.strike : o.strike < c.strike)).sort((a, b) => Math.abs(a.strike - c.strike) - Math.abs(b.strike - c.strike))[0]; return cardHtml(id, c, i, hz, H, I, nx && nx.strike); }).join('') : '<div class="vt-lens-empty">No structural strike.</div>';
         return '<div class="vt-lc-col" data-hz="' + hz + '">' + head + body + '</div>';
     }
     function cardsBlock() {
@@ -189,7 +195,7 @@
         if (sel.dataset.sig !== sig) { const keep = sel.value || L.customBook || P; sel.innerHTML = conv.map(b => '<option value="' + b.id + '">' + disp(b.id) + '</option>').join(''); sel.dataset.sig = sig; sel.value = conv.some(b => b.id === keep) ? keep : (conv[0] || {}).id; }
         el.querySelector('#vt-lens-rows').innerHTML = convRows();
         const gv = view === 'greeks', sec = n => el.querySelector('[data-sec="' + n + '"]');
-        sec('insights').hidden = !gv; sec('hedge').hidden = !gv;
+        sec('lens').hidden = gv; sec('insights').hidden = !gv; sec('hedge').hidden = !gv;   // the strike lens lives on Pricing Surfaces only
         if (gv) { const op = new Map([...el.querySelectorAll('.vt-lc')].map(d => [d.dataset.k, d.open]));   // keep the user's open / closed cards across refreshes
             sec('insights').innerHTML = cardsBlock(); sec('hedge').innerHTML = hedgeBlock(); el.querySelectorAll('.vt-lc').forEach(d => { if (op.has(d.dataset.k)) d.open = op.get(d.dataset.k); }); }
         el.dataset.epoch = L.lens.epoch || '';

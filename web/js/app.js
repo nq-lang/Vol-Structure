@@ -197,26 +197,7 @@ function classFor(v, positiveIsBull = true, weakThresh = 0) {
 }
 function dot(cls) { return `<span class="vt-flow-dot ${cls === 'v-bull' ? 'dot-green' : cls === 'v-bear' ? 'dot-red' : cls === 'v-white' ? 'dot-white' : 'dot-grey'}"></span>`; }
 
-function renderSidebar() {
-    const el = document.getElementById('vt-sidebar-body');
-    if (!el) return;
-    if (window.VT_SIDEBAR) VT_SIDEBAR.refresh();
-    el.innerHTML = `
-        <div class="vt-flow-section">
-            <div class="vt-flow-section-title">Dealer exposure by DTE</div>
-            ${renderDteMatrix()}
-        </div>`;
-}
-
-function renderDteMatrix() {
-    const buckets = ['0DTE', '1DTE', '2DTE', 'term'];
-    const names = { gex: 'GEX', dex: 'DEX', vanna: 'Vanna', charm: 'Charm', speed: 'Speed', color: 'Color', theta: 'Theta' };
-    const cell = (v) => v === undefined ? '<td class="v-weak">--</td>'
-        : `<td class="${v > 0 ? 'v-bull' : v < 0 ? 'v-bear' : 'v-weak'}">${Math.abs(v) >= 1e3 || (Math.abs(v) < 1e-2 && v !== 0) ? v.toExponential(1) : v.toFixed(2)}</td>`;
-    return `<table class="vt-dte-matrix"><thead><tr><th></th>${buckets.map(b => `<th>${b === 'term' ? 'Term' : b}</th>`).join('')}</tr></thead><tbody>` +
-        GREEK_CHANNELS.map(ch => `<tr><td>${names[ch]}</td>${buckets.map(b => cell((flow.net[ch] || {})[b])).join('')}</tr>`).join('') +
-        `</tbody></table>`;
-}
+function renderSidebar() { if (window.VT_SIDEBAR) VT_SIDEBAR.refresh(); }   // the sidebar is one shared element: repainted on every switch so it can never show stale state
 
 // ---- PCA Regime Model (bottom of page) ----
 let pcaStatic = null; // set once per batch refit
@@ -265,7 +246,6 @@ function renderPcaInsights(data) {
         <div class="vt-pca-card">
             <h4>Current Regime Read</h4>
             <div class="vt-pca-regime-label" style="color:${data.predicted_color}">${data.predicted_regime}</div>
-            <div class="vt-pca-narrative">${data.narrative}</div>
             ${data.mean_reversion_override_active ? `<div class="vt-mr-override">Mean-Reversion regime under Charm/Vanna override risk</div>` : ''}
         </div>
         <div class="vt-pca-card">
@@ -364,7 +344,6 @@ function insightCardHtml(data, ts) {
     return `
         <div class="vt-insight-card ${regimeClass(data.regime)}">
             <div class="vt-insight-ts">${ts}</div>
-            <h3>Regime: ${highlightLevelsInText(data.regime, levels) || 'n/a'}</h3>
             <div class="vt-insight-card-body">
                 <div class="vt-insight-main">
                     ${row('Dominant force', data.dominant_greek)}
@@ -390,8 +369,22 @@ window.addEventListener('DOMContentLoaded', () => {
     if (window.VT_LENS) VT_LENS.listeners.push(refreshInsightEquiv);
     document.addEventListener('click', e => { const c = e.target.closest('.vt-lvl-chips .vt-lens-chip'); if (c && window.VT_LENS) VT_LENS.toggle(c.dataset.id); });
 });
+// Structural reads belong to ONE ticker. A read is shown (and its levels highlighted) only for the ticker it was generated for; on any ticker / scope change both the live
+// read and the log are cleared until a read for the newly selected ticker arrives, so no level from another instrument is ever displayed.
+let _insightKey = null;
+const scopeKey = sc => sc.ticker + '|' + sc.mode + '|' + (sc.family || '');
+function insightPlaceholder(sc) {
+    const vol = window.VT_REGISTRY && (VT_REGISTRY.volatility || []).includes(sc.ticker), nm = (window.VT_REGISTRY && VT_REGISTRY.display[sc.ticker]) || sc.ticker;
+    return `<div class="vt-insight-card"><div class="vt-insight-levels-empty">${vol ? nm + ' is a volatility index: it has no strike structure, so no structural read is produced.' : 'Waiting for the ' + nm + ' structural read.'}</div></div>`;
+}
+function resetInsight(sc) {
+    _lastInsight = null; _insightKey = scopeKey(sc);
+    const cur = document.getElementById('vt-insight-current'), log = document.getElementById('vt-insight-log');
+    if (cur) cur.innerHTML = insightPlaceholder(sc); if (log) log.innerHTML = '';
+}
 function onInsightUpdate(jsonPayload) {
     const data = JSON.parse(jsonPayload);
+    if (data.scope_key && _insightKey && data.scope_key !== _insightKey) return;   // read generated for another ticker / scope: never shown
     const ts = new Date().toLocaleTimeString();
     document.getElementById('vt-insight-current').innerHTML = insightCardHtml(data, 'updated ' + ts);
     const log = document.getElementById('vt-insight-log');
@@ -451,6 +444,7 @@ function setupTickers() {
         const changed = scope.ticker !== activeTicker;
         activeTicker = scope.ticker;
         if (changed) resetForTicker();
+        if (scopeKey(scope) !== _insightKey) resetInsight(scope);
         // Single View on a legacy ticker takes exactly the old path. Other scopes are pushed as a Scope object.
         if (typeof window.vtSetUnderlying === 'function' && changed && LEGACY_FEED.includes(activeTicker)) window.vtSetUnderlying(activeTicker);
         if (typeof window.vtSetScope === 'function') window.vtSetScope(JSON.stringify(scope));
@@ -472,6 +466,7 @@ window.__activeTicker = () => activeTicker;
 window.__panels = panels; // read-only handle for diagnostics/tests
 window.onModelUpdate = onModelUpdate;
 window.onInsightUpdate = onInsightUpdate;
+window.__insightKey = () => _insightKey;
 window.onRegimeStatic = onRegimeStatic;
 window.onRegimeLive = onRegimeLive;
 window.onRegimeViz = (j) => { if (pcaPanel) pcaPanel.setViz(typeof j === 'string' ? JSON.parse(j) : j); };

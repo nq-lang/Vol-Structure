@@ -32,11 +32,9 @@
                 <div id="vt-section-pca-regime">
                     <div class="vt-section-header">
                         <h2>PCA Regime Model</h2>
-                        <span class="vt-section-sub">structural regime classification — PCA reduces 17 standardized features to 3D for visualization; a 5-component GMM turns that into a live probability distribution across regimes, never a hard label</span>
                     </div>
                     <div class="vt-row-label">3D Biplot
                         <span class="vt-badge vt-badge-log">Batch-Fit + Live Trail</span>
-                        <span class="vt-row-desc">trading-day point cloud from the last batch refit, colored by regime, with today's live session trail drawn on top</span>
                     </div>
                     <div id="vt-pca-biplot-wrap" class="vt-pca-biplot-wrap">
                         <div id="vt-pca-biplot" class="vt-pca-biplot"></div>
@@ -45,7 +43,6 @@
 
                     <div class="vt-row-label">Regime Insights
                         <span class="vt-badge vt-badge-live"><span class="dot"></span>Live</span>
-                        <span class="vt-row-desc">current regime probability, dominant drivers, and the dual-trigger/decay-deviation transition watch</span>
                     </div>
                     <div id="vt-pca-insights" class="vt-pca-insights"></div>
                 </div>
@@ -55,7 +52,7 @@
                         <div id="vt-section-vol-structure">
                     <div class="vt-section-header">
                         <h2>Vol Structure</h2>
-                        <span class="vt-section-sub">the live structural narrative — regime, dominant Greek, key levels, scenarios, generated each cycle by the four-layer confluence engine</span>
+                        <span class="vt-section-sub">the live structural read for the selected ticker — dominant Greek, key levels, scenarios</span>
                     </div>
                     <div class="vt-row-label">Current Structural Read
                         <span class="vt-badge vt-badge-live"><span class="dot"></span>Live</span>
@@ -76,8 +73,6 @@
 <div class="vt-sidebar" id="vt-sidebar">
             <h2>Dealer Flow <span class="vt-badge vt-badge-live"><span class="dot"></span>Live</span></h2>
             <div id="vt-sidebar-xb" class="vt-sidebar-xb"></div>
-            <div class="vt-xb-legacy-title">Primary book detail</div>
-            <div id="vt-sidebar-body"></div>
         </div>
                 </aside>
             </div>

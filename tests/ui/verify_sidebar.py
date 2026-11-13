@@ -15,7 +15,7 @@ with sync_playwright() as p:
         json.dumps({**pl, "points": [{**q, **({"value": q["value"] * scale} if "value" in q else {})} for q in pl["points"]]} if "points" in pl else pl)])
     for pl in d["model_updates"]: send(pl)
     go = lambda page: (pg.click(f'[data-page="{page}"]'), pg.wait_for_timeout(250))
-    txt = lambda: pg.evaluate("document.getElementById('vt-sidebar-body').innerText")
+    txt = lambda: pg.evaluate("document.getElementById('vt-sidebar').innerText")
     pages = ["vt-page-main", "vt-page-pricing", "vt-page-greeks", "vt-page-cf"]
     for page in pages:
         go(page)
@@ -35,5 +35,6 @@ with sync_playwright() as p:
     for pl in d["model_updates"]:
         if pl.get("_channel", pl["model"]) == "gex" and pl["bucket"] == "term": send(pl, 0.5)
     t_pricing = txt(); go("vt-page-greeks")
-    if txt() != t_pricing or t_pricing == t_greeks: bad.append(("reverse", "no propagation", t_pricing == t_greeks))
+    if txt() != t_pricing: bad.append(("reverse", "sidebar text diverged"))
+    if pg.locator("#vt-sidebar-body").count() or "Primary book detail" in txt(): bad.append("primary book detail still present")
     print("page errors:", errs); print("FAILURES:", bad or "none")

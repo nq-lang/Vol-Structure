@@ -397,3 +397,11 @@ T2-5 hedging, T2-6 vol/risk, T2-7 multibook_v1, T2-8 scoped LLM layer, cross-boo
 - PCA and t-SNE are the only two tabs; each shows the interactive 3D model (rotate, zoom, reset, PNG; grid planes, ticked axes with variance %) beside the flat upright 2D plane (axes, ticks, labelled variables; drag pans, wheel zooms). Same points in both panes, hover rings the point in both.
 - Locked: regime clouds x2.8, loading vectors x1.0, feature pulls always on, regime-only colouring. pca_views.js removed (variable table, replay scrubber and pair selector went with it).
 - Surface / 2D hover readouts: larger, follow the pointer, mini-chart crosshair marker; positive values green, negative red. verify_pca_dual.py replaces the old view tests.
+
+## Pricing / Chart Factors / sidebar / ticker-scope pass
+- Pricing Surfaces: cross-asset cascades removed; Distribution, Intraday, Weekly and Thesis & risk each have a header band (title, scope, Intraday + Swing bias chips) above a grouped data body.
+- Strike lens: live dealer-flow table removed (reference table kept); only the top 2 cards per horizon; playbooks carry Entry / Stop / TP1-TP3 (TP2/TP3 = next structural strikes, else extended) with R, P(hit) and scale-out.
+- Chart Factors: descriptive HUD/read/unavailable area and the strike lens removed (lens lives on Pricing only); a selected index/ETF shows only its own strikes and levels on the heatmap.
+- Sidebar: scope line, Scoped read, Volatility regime and Primary book detail (DTE matrix) removed.
+- Vol Structure: "Regime:" heading and PCA descriptive text removed; reads/log are cleared on ticker change and shown only for the selected ticker (demo builds the read from that ticker's own strike cards).
+- Tests: verify_ticker_scope added; taskfile/chart/sidebar tests updated.

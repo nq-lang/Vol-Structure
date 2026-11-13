@@ -10,7 +10,7 @@ done
 fi
 if [ "$1" != "cpp" ]; then
 cd tests/ui
-for t in verify_scope verify_keylevels verify_sidebar verify_sidebar_xb verify_volatility verify_pricing verify_chart verify_forward verify_demo verify_mbmodel verify_dte verify_taskfile verify_pca_dual; do
+for t in verify_scope verify_keylevels verify_sidebar verify_sidebar_xb verify_volatility verify_pricing verify_chart verify_forward verify_demo verify_mbmodel verify_dte verify_taskfile verify_pca_dual verify_ticker_scope; do
   echo -n "$t "; python3 $t.py 2>&1 | tail -1 | cut -c1-160
 done
 fi

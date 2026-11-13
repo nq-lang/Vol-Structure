@@ -8,7 +8,8 @@ def chk(c, m):
     if not c: F.append(m)
 def push(pg, key):
     d = LP[key]; pg.evaluate("([s])=>window.VT_SCOPE.apply(s.ticker,s.mode==='family'?'family':'multi_book',s.family)", [d["scope"]])
-    pg.evaluate("(j)=>window.onMultibook(j)", json.dumps(d["multibook"])); pg.evaluate("(j)=>window.onStrikeLens(j)", json.dumps(d["lens"]))
+    pg.evaluate("(j)=>window.onMultibook(j)", json.dumps(d["multibook"])); pg.evaluate("(j)=>window.onStrikeLens(j)", json.dumps(d["lens"])); pg.evaluate("(j)=>window.onInsightUpdate(j)", json.dumps(INS))   # a read arrives for the newly selected ticker
+INS = json.load(open((VT_ROOT + "/preview/synthetic_payloads.json")))["insight"]
 RX = re.compile(r"^[A-Z_/]+ \$[\d,]+(\.\d+)? / [A-Z]{2} \$[\d,]+(\.\d+)?$")
 with sync_playwright() as p:
     b = p.chromium.launch(executable_path=__import__("os").environ.get("PW_CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"), headless=True, args=["--no-sandbox"])

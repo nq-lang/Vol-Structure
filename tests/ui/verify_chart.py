@@ -22,10 +22,10 @@ with sync_playwright() as p:
         chk(pg.locator("#vt-page-greeks .vt-ic, #vt-page-greeks .vt-hedge-t, #vt-page-greeks .vt-lens-t, #vt-page-greeks #vt-lens").count() == 0, "Greeks page has no Strike Insights / Strike Lens / Hedge Flow")
         chk(pg.is_visible("#vt-page-greeks .vt-sidebar") and pg.locator("#vt-page-greeks #vt-sidebar").count() == 1, "sidebar present on Greeks page")
         pg.click('[data-page="vt-page-cf"]'); pg.wait_for_timeout(500)
-        secs = pg.eval_on_selector_all("#vt-lens-slot-cf .vt-cf-sec", "e=>e.map(x=>x.dataset.sec)"); chk(secs == ["insights", "lens", "hedge"], f"section order {secs}")
-        chk(pg.locator("#vt-page-cf #vt-sidebar").count() == 1 and pg.evaluate("(()=>{const s=document.getElementById('vt-sidebar').getBoundingClientRect(),c=document.getElementById('vt-cf').getBoundingClientRect();return s.left>=c.right-2})()"), "sidebar beside the chart, right side")
-        chk(pg.evaluate("(()=>{const c=document.getElementById('vt-cf').getBoundingClientRect(),i=document.querySelector('.vt-cf-sec').getBoundingClientRect();return i.top>=c.bottom-2})()"), "sections stacked below the chart")
-        chk(pg.evaluate("(()=>{const a=[...document.querySelectorAll('.vt-cf-sec')].map(e=>e.getBoundingClientRect());return a[1].top>=a[0].bottom-2&&a[2].top>=a[1].bottom-2})()"), "three sections stacked vertically")
+        secs = pg.eval_on_selector_all("#vt-lens-slot-cf .vt-cf-sec", "e=>e.filter(x=>!x.hidden).map(x=>x.dataset.sec)"); chk(secs == ["insights", "hedge"], f"visible sections {secs}: no strike lens on Chart Factors")
+        chk(pg.is_hidden("#vt-sidebar"), "no sidebar on Chart Factors")
+        chk(pg.evaluate("(()=>{const c=document.getElementById('vt-cf').getBoundingClientRect(),i=[...document.querySelectorAll('.vt-cf-sec')].find(e=>!e.hidden).getBoundingClientRect();return i.top>=c.bottom-2})()"), "sections stacked below the chart")
+        chk(pg.evaluate("(()=>{const a=[...document.querySelectorAll('.vt-cf-sec')].filter(e=>!e.hidden).map(e=>e.getBoundingClientRect());return a[1].top>=a[0].bottom-2})()"), "sections stacked vertically")
         # --- chart live + epoch gating
         chk(pg.is_visible("#vt-cf-cv"), "chart canvas visible"); st = pg.evaluate("VT_CF.state"); chk(st["shownEpoch"] == LP["NQ_family"]["chart"]["epoch"], "shown epoch == payload epoch")
         # mismatched chart epoch is held, then shown stale after 250 ms
@@ -34,7 +34,7 @@ with sync_playwright() as p:
         pg.wait_for_timeout(300); chk(pg.evaluate("VT_CF.state.shownEpoch") == "deadbeefdeadbeef" and pg.is_visible("#vt-cf-stale"), "after 250 ms newest is shown with stale badge")
         pg.evaluate("(j)=>window.onChartFactors(j)", json.dumps(d["chart"])); pg.wait_for_timeout(200); chk(not pg.is_visible("#vt-cf-stale"), "stale badge clears when epochs match")
         # --- layers / HUD / read / status
-        t = pg.inner_text("#vt-cf"); chk("GAMMA NEGATIVE" in t and "VXN" in t and "CONF" in t, "HUD chips"); chk("amplifying" in t and "Unavailable (not inferred)" in t, "Read + unavailable inputs"); chk("EXAMPLE" in t and "BID" in t and "LIVE" in t, "status bar + example labelling")
+        t = pg.inner_text("#vt-cf"); chk(pg.locator("#vt-cf-hud, #vt-cf-read").count() == 0 and "Unavailable (not inferred)" not in t and "VRP n/a" not in t, "descriptive HUD / read area removed"); chk("BID" in t and "LIVE" in t and "example" in t, "status bar + example labelling")
         chk(pg.locator("#vt-cf-metrics button").count() >= 4, "metric selector")
         # --- heat rows: strike row == argmax row; same value -> same colour; eRef non-decreasing; future >= past brightness
         res = pg.evaluate("""()=>{const c=VT_CF.state.chart,sp=c.axis.spot,em=Math.abs(c.em.up-sp);const out=[];for(const f of [1,0.6,0.25]){const half=Math.max(1.8*em,sp*0.008)*f;VT_CF.state.view={t0:570,t1:960,p0:sp-half,p1:sp+half};VT_CF.draw();const g=VT_CF.grid();const old=c.field.metrics;
@@ -80,24 +80,16 @@ with sync_playwright() as p:
             return {H0,H1,H2,H3,hl,hl2,err,nz,nan,h0}}""")
         chk(sc["H1"] > sc["H0"] * 1.2, f"outlier: scale rises quickly {sc['H0']:.3g}->{sc['H1']:.3g}"); chk(sc["H3"] < sc["H2"], "outlier leaves: scale decays (slower than it rose)"); chk(sc["H2"] - sc["H0"] > sc["H2"] - sc["H3"], "rise is faster than decay")
         chk(sc["hl"] == sc["hl2"], "scale lock freezes H"); chk(sc["err"] is None and sc["nz"] == 0 and sc["nan"] == 0 and sc["h0"] == 0, f"empty / NaN / H=0 data draws without error: {sc['err']}")
-        # --- numeric parity: every level price on the chart equals a row in the Strike Lens table (same epoch)
-        for _ in range(8):
-            if pg.locator("#vt-lens-slot-cf .vt-lens-chip:not(.on):not(.na)").count(): pg.click("#vt-lens-slot-cf .vt-lens-chip:not(.on):not(.na)"); pg.wait_for_timeout(60)
-        rows = pg.eval_on_selector_all("#vt-lens-slot-cf .vt-lens-t tbody tr", "r=>r.map(x=>parseFloat(x.dataset.v))"); lv = pg.evaluate("VT_CF.levelsPx().map(l=>l.price)")
-        chk(len(rows) > 0 and len(lv) > 0, "rows and levels exist"); tick = LP["NQ_family"]["chart"]["axis"]["tick"]
-        # each chart cluster must contain (be within tolerance of) at least one lens row, and each Flip/Wall lens row must map to a chart level
-        tol = max(2 * tick, 0.0004 * LP["NQ_family"]["chart"]["axis"]["spot"]) + 1e-9
-        chk(all(any(abs(l - r) <= tol for r in rows) for l in lv), "every chart level price matches a Strike Lens row")
-        keyrows = pg.eval_on_selector_all("#vt-lens-slot-cf .vt-lens-t tbody tr", "r=>r.filter(x=>/Flip|Wall/.test(x.cells[0].textContent)).map(x=>parseFloat(x.dataset.v))")
-        chk(all(any(abs(l - r) <= tol for l in lv) for r in keyrows), "every Flip / Wall row of the lens is on the chart")
+        # --- the chart's levels exist; Chart Factors has no strike lens table
+        lv = pg.evaluate("VT_CF.levelsPx().map(l=>l.price)"); chk(len(lv) > 0, "levels exist"); chk(pg.locator("#vt-lens-slot-cf .vt-lens-t").is_hidden() or pg.locator("#vt-lens-slot-cf [data-sec=lens]").evaluate("e=>e.hidden"), "no strike lens on Chart Factors")
         # --- label engine: 19 px spacing on both gutters
         for fn in ("labels", "leftLabels"):
             lb = sorted(pg.evaluate(f"VT_CF.{fn}().map(l=>l.ly)")); chk(all(b2 - a >= 18.99 for a, b2 in zip(lb, lb[1:])), f"{fn} >= 19 px apart")
         # --- crosshair: $/1% from the hedge curve + cross-highlight
         pg.evaluate("window.scrollTo(0,0)"); pg.wait_for_timeout(100); pg.evaluate("document.getElementById('vt-cf-cv').scrollIntoView({block:'start'})"); pg.wait_for_timeout(100); g = pg.evaluate("VT_CF.geom()"); box = pg.eval_on_selector("#vt-cf-cv", "e=>{const r=e.getBoundingClientRect();return [r.left,r.top]}")
-        pg.mouse.move(box[0] + g["x0"] + 200, box[1] + g["y0"] + 150); pg.wait_for_timeout(150); tip = pg.inner_text("#vt-cf-tip"); chk("cost to move 1%" in tip and "$" in tip and "nearest strike" in tip, f"crosshair readout: {tip[:60]}")
-        lvpx = pg.evaluate("VT_CF.levelsPx()"); L0 = [l for l in lvpx if "Flip" in l["label"] or "Wall" in l["label"]][0]; pg.mouse.move(box[0] + g["x0"] + 300, box[1] + L0["y"]); pg.wait_for_timeout(200)
-        chk(pg.locator("#vt-lens-slot-cf .cf-hl").count() >= 1, "hovering a level highlights its row in the sections")
+        pg.mouse.move(box[0] + g["x0"] + 200, box[1] + g["y0"] + 150); pg.wait_for_timeout(150); tip = pg.inner_text("#vt-cf-tip"); chk("STRIKE" in tip and "NET GEX" in tip and "NEAREST" in tip, f"crosshair readout: {tip!r}")
+        sks = pg.eval_on_selector_all("#vt-lens-slot-cf .vt-lc[data-sk]", "e=>e.map(x=>parseFloat(x.dataset.sk))"); lvpx = pg.evaluate("VT_CF.levelsPx()"); tol = max(2 * LP["NQ_family"]["chart"]["axis"]["tick"], 0.0004 * LP["NQ_family"]["chart"]["axis"]["spot"]); L0 = min(lvpx, key=lambda l: min(abs(l["price"] - k) for k in sks)); chk(min(abs(L0["price"] - k) for k in sks) <= tol, "a chart level matches a strike card"); pg.mouse.move(box[0] + g["x0"] + 300, box[1] + L0["y"]); pg.wait_for_timeout(200)
+        chk(pg.locator("#vt-lens-slot-cf .cf-hl").count() >= 1, "hovering a level highlights its card in the sections")
         pg.mouse.move(box[0] + 5, box[1] + 5)
         # --- hedge curve interpolation sanity (monotone cubic stays within data bounds)
         ok = pg.evaluate("""()=>{const h=VT_CF.state.chart.hedge,f=VT_CF.mcInterp(h.prices,h.cost1pct);const lo=Math.min(...h.cost1pct),hi=Math.max(...h.cost1pct);for(let i=0;i<50;i++){const p=h.prices[0]+(h.prices[h.prices.length-1]-h.prices[0])*i/49;const v=f(p);if(v<lo-1e-6||v>hi+1e-6)return false;}for(let i=0;i<h.prices.length;i++)if(Math.abs(f(h.prices[i])-h.cost1pct[i])>1e-6)return false;return true;}""")
